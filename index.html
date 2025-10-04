@@ -1,0 +1,416 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="en">\
+<head>\
+  <meta charset="UTF-8">\
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+  <title>Team Word Game - Multi-player</title>\
+  <script src="https://cdn.tailwindcss.com"></script>\
+  <script type="module">\
+    // Firebase imports\
+    import \{ initializeApp \} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';\
+    import \{ getDatabase, ref, set, onValue, push, remove, update \} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';\
+\
+    // Firebase configuration\
+    const firebaseConfig = \{\
+      apiKey: "AIzaSyAtcCz7buZmEoLflrxKcf7vFYY3YOG5gdM",\
+      authDomain: "nounsandfrowns.firebaseapp.com",\
+      databaseURL: "https://nounsandfrowns-default-rtdb.europe-west1.firebasedatabase.app",\
+      projectId: "nounsandfrowns",\
+      storageBucket: "nounsandfrowns.firebasestorage.app",\
+      messagingSenderId: "948424078081",\
+      appId: "1:948424078081:web:8dcae9f01988fd8a7ca100",\
+      measurementId: "G-XX4QBR84D5"\
+    \};\
+\
+    const app = initializeApp(firebaseConfig);\
+    const database = getDatabase(app);\
+\
+    // Word lists\
+    window.NOUNS = ['elephant', 'mountain', 'symphony', 'laboratory', 'adventure', 'telescope', 'cathedral', 'volcano', 'library', 'hurricane', 'galaxy', 'fortress', 'ocean', 'pyramid', 'metropolis', 'compass', 'desert', 'waterfall', 'monastery', 'carnival', 'labyrinth', 'meadow', 'archipelago', 'castle', 'valley', 'aurora', 'canyon', 'jungle', 'peninsula', 'sanctuary'];\
+    \
+    window.ADJECTIVES = ['magnificent', 'peculiar', 'tremendous', 'delicate', 'mysterious', 'brilliant', 'ancient', 'graceful', 'turbulent', 'serene', 'spectacular', 'elegant', 'ferocious', 'luminous', 'tranquil', 'vibrant', 'majestic', 'bizarre', 'harmonious', 'resilient', 'exquisite', 'radiant', 'enigmatic', 'colossal', 'whimsical', 'pristine', 'formidable', 'ethereal', 'splendid'];\
+    \
+    window.FANCY_WORDS = ['obsequious', 'perspicacious', 'recalcitrant', 'ephemeral', 'ubiquitous', 'vociferous', 'pulchritude', 'quintessential', 'serendipity'];\
+    \
+    window.FAMOUS_PEOPLE = ['Marilyn Monroe', 'Albert Einstein', 'Leonardo da Vinci', 'Iron Man', 'Batman', 'Harry Potter', 'Luke Skywalker', 'Sherlock Holmes'];\
+\
+    window.gameState = \{\
+      roomCode: null,\
+      inRoom: false,\
+      isHost: false,\
+      database: database\
+    \};\
+\
+    // Generate 4-digit room code\
+    window.generateRoomCode = function() \{\
+      return Math.floor(1000 + Math.random() * 9000).toString();\
+    \};\
+\
+    // Create room\
+    window.createRoom = async function() \{\
+      const password = document.getElementById('createPassword').value;\
+      if (!password || password.length < 4) \{\
+        alert('Password must be at least 4 characters');\
+        return;\
+      \}\
+\
+      const roomCode = window.generateRoomCode();\
+      const roomRef = ref(database, `rooms/$\{roomCode\}`);\
+      \
+      await set(roomRef, \{\
+        password: password,\
+        host: Date.now(),\
+        players: [],\
+        currentWord: '',\
+        currentWordType: '',\
+        gameMode: 'all_see',\
+        round: 0,\
+        excludedPlayer: null,\
+        wordCategories: \{\
+          nouns: true,\
+          adjectives: true,\
+          famousPeople: false,\
+          fancyWords: false\
+        \},\
+        createdAt: Date.now()\
+      \});\
+\
+      window.gameState.roomCode = roomCode;\
+      window.gameState.isHost = true;\
+      window.gameState.inRoom = true;\
+      \
+      document.getElementById('lobby').classList.add('hidden');\
+      document.getElementById('gameRoom').classList.remove('hidden');\
+      document.getElementById('roomCodeDisplay').textContent = roomCode;\
+      \
+      window.listenToRoom(roomCode);\
+    \};\
+\
+    // Join room\
+    window.joinRoom = async function() \{\
+      const roomCode = document.getElementById('joinRoomCode').value;\
+      const password = document.getElementById('joinPassword').value;\
+\
+      if (!roomCode || !password) \{\
+        alert('Please enter room code and password');\
+        return;\
+      \}\
+\
+      const roomRef = ref(database, `rooms/$\{roomCode\}`);\
+      \
+      onValue(roomRef, (snapshot) => \{\
+        const data = snapshot.val();\
+        \
+        if (!data) \{\
+          alert('Room not found');\
+          return;\
+        \}\
+\
+        if (data.password !== password) \{\
+          alert('Incorrect password');\
+          return;\
+        \}\
+\
+        if (data.players && data.players.length >= 8) \{\
+          alert('Room is full (8 players max)');\
+          return;\
+        \}\
+\
+        window.gameState.roomCode = roomCode;\
+        window.gameState.isHost = false;\
+        window.gameState.inRoom = true;\
+        \
+        document.getElementById('lobby').classList.add('hidden');\
+        document.getElementById('gameRoom').classList.remove('hidden');\
+        document.getElementById('roomCodeDisplay').textContent = roomCode;\
+        \
+        window.listenToRoom(roomCode);\
+      \}, \{ onlyOnce: true \});\
+    \};\
+\
+    // Listen to room updates\
+    window.listenToRoom = function(roomCode) \{\
+      const roomRef = ref(database, `rooms/$\{roomCode\}`);\
+      \
+      onValue(roomRef, (snapshot) => \{\
+        const data = snapshot.val();\
+        if (data) \{\
+          window.updateGameUI(data);\
+        \}\
+      \});\
+    \};\
+\
+    // Update game UI from Firebase data\
+    window.updateGameUI = function(data) \{\
+      // Update players list\
+      const playersContainer = document.getElementById('playersList');\
+      playersContainer.innerHTML = '';\
+      \
+      if (data.players && data.players.length > 0) \{\
+        data.players.forEach(player => \{\
+          const playerDiv = document.createElement('div');\
+          playerDiv.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';\
+          playerDiv.innerHTML = `\
+            <span class="flex-1 font-medium">$\{player.name\}</span>\
+            <span class="text-sm text-gray-500">Team: $\{player.team || 'None'\}</span>\
+          `;\
+          playersContainer.appendChild(playerDiv);\
+        \});\
+      \} else \{\
+        playersContainer.innerHTML = '<p class="text-gray-500 text-sm">No players yet</p>';\
+      \}\
+\
+      // Update current word\
+      if (data.currentWord) \{\
+        document.getElementById('currentWord').textContent = data.currentWord;\
+        document.getElementById('wordDisplay').classList.remove('hidden');\
+      \} else \{\
+        document.getElementById('wordDisplay').classList.add('hidden');\
+      \}\
+\
+      // Update game mode\
+      document.getElementById('gameModeDisplay').textContent = data.gameMode || 'all_see';\
+    \};\
+\
+    // Add player to room\
+    window.addPlayerToRoom = async function() \{\
+      const playerName = document.getElementById('playerName').value;\
+      if (!playerName) \{\
+        alert('Please enter a player name');\
+        return;\
+      \}\
+\
+      const roomRef = ref(database, `rooms/$\{window.gameState.roomCode\}/players`);\
+      \
+      const snapshot = await new Promise(resolve => \{\
+        onValue(roomRef, resolve, \{ onlyOnce: true \});\
+      \});\
+\
+      const players = snapshot.val() || [];\
+      \
+      if (players.length >= 8) \{\
+        alert('Room is full (8 players max)');\
+        return;\
+      \}\
+\
+      const newPlayer = \{\
+        id: Date.now(),\
+        name: playerName,\
+        team: null\
+      \};\
+\
+      players.push(newPlayer);\
+\
+      await set(roomRef, players);\
+      document.getElementById('playerName').value = '';\
+    \};\
+\
+    // Generate new word\
+    window.generateWord = async function() \{\
+      const roomRef = ref(database, `rooms/$\{window.gameState.roomCode\}`);\
+      \
+      const snapshot = await new Promise(resolve => \{\
+        onValue(roomRef, resolve, \{ onlyOnce: true \});\
+      \});\
+\
+      const data = snapshot.val();\
+      let wordPool = [];\
+\
+      if (data.wordCategories.nouns) wordPool = [...wordPool, ...window.NOUNS.map(w => (\{ word: w, type: 'noun' \}))];\
+      if (data.wordCategories.adjectives) wordPool = [...wordPool, ...window.ADJECTIVES.map(w => (\{ word: w, type: 'adjective' \}))];\
+      if (data.wordCategories.famousPeople) wordPool = [...wordPool, ...window.FAMOUS_PEOPLE.map(w => (\{ word: w, type: 'person' \}))];\
+      if (data.wordCategories.fancyWords) wordPool = [...wordPool, ...window.FANCY_WORDS.map(w => (\{ word: w, type: 'fancy' \}))];\
+\
+      if (wordPool.length === 0) \{\
+        alert('Please select at least one word category!');\
+        return;\
+      \}\
+\
+      const randomItem = wordPool[Math.floor(Math.random() * wordPool.length)];\
+\
+      await update(roomRef, \{\
+        currentWord: randomItem.word,\
+        currentWordType: randomItem.type,\
+        round: (data.round || 0) + 1\
+      \});\
+    \};\
+\
+    // Leave room\
+    window.leaveRoom = function() \{\
+      window.gameState.inRoom = false;\
+      window.gameState.roomCode = null;\
+      \
+      document.getElementById('gameRoom').classList.add('hidden');\
+      document.getElementById('lobby').classList.remove('hidden');\
+    \};\
+  </script>\
+  <style>\
+    .hidden \{ display: none !important; \}\
+  </style>\
+</head>\
+<body style="background-color: #D4E4DD;" class="min-h-screen p-8">\
+  <div class="max-w-6xl mx-auto">\
+    <h1 class="text-4xl font-bold text-center mb-2" style="color: #4E5987;">Team Word Game</h1>\
+    <p class="text-center text-gray-600 mb-8">Multi-player word guessing game!</p>\
+\
+    <!-- Lobby (Create or Join Room) -->\
+    <div id="lobby">\
+      <div class="grid md:grid-cols-2 gap-6">\
+        <!-- Create Room -->\
+        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">\
+          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Create Room</h2>\
+          <input \
+            type="password" \
+            id="createPassword" \
+            placeholder="Set room password (min 4 chars)"\
+            class="w-full px-4 py-2 mb-4 border rounded-lg"\
+            minlength="4"\
+          />\
+          <button \
+            onclick="window.createRoom()"\
+            class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90"\
+            style="background-color: #1EA7D8;"\
+          >\
+            Create Room\
+          </button>\
+        </div>\
+\
+        <!-- Join Room -->\
+        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">\
+          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Join Room</h2>\
+          <input \
+            type="text" \
+            id="joinRoomCode" \
+            placeholder="Enter 4-digit room code"\
+            class="w-full px-4 py-2 mb-3 border rounded-lg"\
+            maxlength="4"\
+          />\
+          <input \
+            type="password" \
+            id="joinPassword" \
+            placeholder="Enter room password"\
+            class="w-full px-4 py-2 mb-4 border rounded-lg"\
+          />\
+          <button \
+            onclick="window.joinRoom()"\
+            class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90"\
+            style="background-color: #E85987;"\
+          >\
+            Join Room\
+          </button>\
+        </div>\
+      </div>\
+    </div>\
+\
+    <!-- Game Room -->\
+    <div id="gameRoom" class="hidden">\
+      <!-- Room Info -->\
+      <div class="rounded-lg shadow-md p-6 mb-6 flex justify-between items-center" style="background-color: #F5E6D3;">\
+        <div>\
+          <h2 class="text-xl font-semibold">Room Code: <span id="roomCodeDisplay" class="font-bold text-3xl" style="color: #1EA7D8;"></span></h2>\
+          <p class="text-sm text-gray-600">Share this code with others to join</p>\
+        </div>\
+        <button \
+          onclick="window.leaveRoom()"\
+          class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"\
+        >\
+          Leave Room\
+        </button>\
+      </div>\
+\
+      <!-- Add Player -->\
+      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">\
+        <h3 class="text-lg font-semibold mb-3">Add Player</h3>\
+        <div class="flex gap-2">\
+          <input \
+            type="text" \
+            id="playerName" \
+            placeholder="Enter player name"\
+            class="flex-1 px-4 py-2 border rounded-lg"\
+            maxlength="20"\
+          />\
+          <button \
+            onclick="window.addPlayerToRoom()"\
+            class="px-6 py-2 text-white rounded-lg hover:opacity-90"\
+            style="background-color: #E85987;"\
+          >\
+            Add\
+          </button>\
+        </div>\
+      </div>\
+\
+      <!-- Players List -->\
+      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">\
+        <h3 class="text-lg font-semibold mb-3">Players (<span id="playerCount">0</span>/8)</h3>\
+        <div id="playersList" class="space-y-2">\
+          <p class="text-gray-500 text-sm">No players yet</p>\
+        </div>\
+      </div>\
+\
+      <!-- Generate Word -->\
+      <div class="rounded-lg shadow-md p-6 mb-6 text-center" style="background-color: #F5E6D3;">\
+        <button \
+          onclick="window.generateWord()"\
+          class="px-8 py-4 text-white rounded-lg text-xl font-semibold hover:opacity-90"\
+          style="background-color: #1EA7D8;"\
+        >\
+          \uc0\u55356 \u57266  Generate Random Word\
+        </button>\
+      </div>\
+\
+      <!-- Word Display -->\
+      <div id="wordDisplay" class="rounded-lg shadow-md p-8 mb-6 text-center hidden" style="background-color: #E8F4D0;">\
+        <p class="text-5xl font-bold mb-2" style="color: #5E5394;" id="currentWord"></p>\
+        <a \
+          id="wordLink" \
+          href="#" \
+          target="_blank"\
+          class="inline-block mt-4 px-6 py-2 text-white rounded-lg hover:opacity-90"\
+          style="background-color: #5E5394;"\
+        >\
+          View Definition\
+        </a>\
+      </div>\
+\
+      <!-- Game Info -->\
+      <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">\
+        <p class="text-sm text-gray-600">Game Mode: <span id="gameModeDisplay" class="font-semibold">all_see</span></p>\
+      </div>\
+    </div>\
+  </div>\
+\
+  <script>\
+    // Update word link\
+    window.updateGameUI = (function() \{\
+      const original = window.updateGameUI;\
+      return function(data) \{\
+        if (original) original(data);\
+        \
+        // Update word link\
+        if (data.currentWord) \{\
+          const link = document.getElementById('wordLink');\
+          if (data.currentWordType === 'person') \{\
+            link.href = `https://en.wikipedia.org/wiki/$\{data.currentWord.replace(/ /g, '_')\}`;\
+          \} else if (data.currentWordType === 'fancy') \{\
+            link.href = `https://www.thesaurus.com/browse/$\{data.currentWord.toLowerCase()\}`;\
+          \} else \{\
+            link.href = `https://www.dictionary.com/browse/$\{data.currentWord.toLowerCase()\}`;\
+          \}\
+        \}\
+        \
+        // Update player count\
+        const count = data.players ? data.players.length : 0;\
+        const countEl = document.getElementById('playerCount');\
+        if (countEl) countEl.textContent = count;\
+      \};\
+    \})();\
+  </script>\
+</body>\
+</html>}
