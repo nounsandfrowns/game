@@ -5,12 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Team Word Game - Multi-player</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script type="module">
-    // Firebase imports
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getDatabase, ref, set, onValue, push, remove, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+  <style>
+    .hidden { display: none !important; }
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body style="background-color: #D4E4DD;" class="min-h-screen p-8">
+  <div class="max-w-6xl mx-auto" id="app">
+    <h1 class="text-4xl font-bold text-center mb-2" style="color: #4E5987;">Team Word Game</h1>
+    <p class="text-center text-gray-600 mb-8">Multi-player word guessing game!</p>
 
-    // Firebase configuration
+    <!-- Lobby -->
+    <div id="lobby">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
+          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Create Room</h2>
+          <input type="password" id="createPassword" placeholder="Set password (min 4 chars)" class="w-full px-4 py-2 mb-4 border rounded-lg" minlength="4">
+          <button onclick="createRoom()" class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90" style="background-color: #1EA7D8;">Create Room</button>
+        </div>
+        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
+          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Join Room</h2>
+          <input type="text" id="joinRoomCode" placeholder="4-digit room code" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="4">
+          <input type="password" id="joinPassword" placeholder="Room password" class="w-full px-4 py-2 mb-4 border rounded-lg">
+          <button onclick="joinRoom()" class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90" style="background-color: #E85987;">Join Room</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Room -->
+    <div id="gameRoom" class="hidden">
+      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-xl font-semibold">Room: <span id="roomCodeDisplay" class="font-bold text-2xl" style="color: #1EA7D8;"></span></h2>
+            <p class="text-sm text-gray-600">Share this code</p>
+          </div>
+          <button onclick="leaveRoom()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Leave</button>
+        </div>
+      </div>
+
+      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
+        <h3 class="font-semibold mb-2">Players (<span id="playerCount">0</span>/8)</h3>
+        <div class="flex gap-2 mb-4">
+          <input type="text" id="playerName" placeholder="Player name" class="flex-1 px-4 py-2 border rounded-lg" maxlength="20">
+          <button onclick="addPlayer()" class="px-6 py-2 text-white rounded-lg" style="background-color: #E85987;">Add</button>
+          <button onclick="randomizeTeams()" class="px-6 py-2 text-white rounded-lg" style="background-color: #5E5394;">⚡ Randomize Teams</button>
+        </div>
+        <div id="playersList" class="space-y-2"></div>
+      </div>
+
+      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
+        <h3 class="font-semibold mb-2">Game Mode:</h3>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg">Everyone Sees</button>
+          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg">Team Alternating</button>
+          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg">Random Player Excluded</button>
+        </div>
+        <h3 class="font-semibold mb-2">Word Categories:</h3>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+            <input type="checkbox" id="cat_nouns" checked onclick="toggleCategory('nouns')">
+            <span>Nouns</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+            <input type="checkbox" id="cat_adjectives" checked onclick="toggleCategory('adjectives')">
+            <span>Adjectives</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+            <input type="checkbox" id="cat_fancy" onclick="toggleCategory('fancyWords')">
+            <span>Fancy Words</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+            <input type="checkbox" id="cat_famous" onclick="toggleCategory('famousPeople')">
+            <span>Famous People</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="text-center mb-6 rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
+        <button onclick="generateWord()" class="px-8 py-4 text-white rounded-lg text-xl font-semibold" style="background-color: #1EA7D8;">🎲 Generate Word</button>
+      </div>
+
+      <div id="playersDisplay"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getDatabase, ref, set, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
     const firebaseConfig = {
       apiKey: "AIzaSyAtcCz7buZmEoLflrxKcf7vFYY3YOG5gdM",
       authDomain: "nounsandfrowns.firebaseapp.com",
@@ -18,392 +101,299 @@
       projectId: "nounsandfrowns",
       storageBucket: "nounsandfrowns.firebasestorage.app",
       messagingSenderId: "948424078081",
-      appId: "1:948424078081:web:8dcae9f01988fd8a7ca100",
-      measurementId: "G-XX4QBR84D5"
+      appId: "1:948424078081:web:8dcae9f01988fd8a7ca100"
     };
 
     const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
+    const db = getDatabase(app);
+    window.db = db;
+    window.roomCode = null;
 
-    // Word lists
-    window.NOUNS = ['elephant', 'mountain', 'symphony', 'laboratory', 'adventure', 'telescope', 'cathedral', 'volcano', 'library', 'hurricane', 'galaxy', 'fortress', 'ocean', 'pyramid', 'metropolis', 'compass', 'desert', 'waterfall', 'monastery', 'carnival', 'labyrinth', 'meadow', 'archipelago', 'castle', 'valley', 'aurora', 'canyon', 'jungle', 'peninsula', 'sanctuary'];
-    
-    window.ADJECTIVES = ['magnificent', 'peculiar', 'tremendous', 'delicate', 'mysterious', 'brilliant', 'ancient', 'graceful', 'turbulent', 'serene', 'spectacular', 'elegant', 'ferocious', 'luminous', 'tranquil', 'vibrant', 'majestic', 'bizarre', 'harmonious', 'resilient', 'exquisite', 'radiant', 'enigmatic', 'colossal', 'whimsical', 'pristine', 'formidable', 'ethereal', 'splendid'];
-    
-    window.FANCY_WORDS = ['obsequious', 'perspicacious', 'recalcitrant', 'ephemeral', 'ubiquitous', 'vociferous', 'pulchritude', 'quintessential', 'serendipity'];
-    
-    window.FAMOUS_PEOPLE = ['Marilyn Monroe', 'Albert Einstein', 'Leonardo da Vinci', 'Iron Man', 'Batman', 'Harry Potter', 'Luke Skywalker', 'Sherlock Holmes'];
-
-    window.gameState = {
-      roomCode: null,
-      inRoom: false,
-      isHost: false,
-      database: database
+    // Word lists - keeping your full lists
+    window.WORDS = {
+      nouns: ['elephant', 'mountain', 'symphony', 'laboratory', 'adventure', 'telescope', 'cathedral', 'volcano', 'library', 'hurricane', 'galaxy', 'fortress', 'ocean', 'pyramid', 'metropolis', 'compass', 'desert', 'waterfall', 'monastery', 'carnival', 'labyrinth', 'meadow', 'archipelago', 'castle', 'valley', 'aurora', 'canyon', 'jungle', 'peninsula', 'sanctuary', 'butterfly', 'dragon', 'unicorn', 'phoenix', 'lighthouse', 'glacier', 'earthquake', 'tornado', 'avalanche', 'eclipse', 'comet', 'nebula', 'asteroid', 'satellite', 'rocket', 'submarine', 'helicopter', 'parachute', 'microscope', 'binoculars'],
+      adjectives: ['magnificent', 'peculiar', 'tremendous', 'delicate', 'mysterious', 'brilliant', 'ancient', 'graceful', 'turbulent', 'serene', 'spectacular', 'elegant', 'ferocious', 'luminous', 'tranquil', 'vibrant', 'majestic', 'bizarre', 'harmonious', 'resilient', 'exquisite', 'radiant', 'enigmatic', 'colossal', 'whimsical', 'pristine', 'formidable', 'ethereal', 'splendid', 'dazzling', 'gleaming', 'shimmering', 'sparkling', 'glittering', 'blazing', 'glowing', 'flickering', 'twinkling', 'shining', 'vivid', 'bold', 'striking', 'dramatic', 'intense', 'powerful', 'mighty', 'strong', 'robust', 'sturdy', 'solid'],
+      fancyWords: ['obsequious', 'perspicacious', 'recalcitrant', 'ephemeral', 'ubiquitous', 'vociferous', 'pulchritude', 'quintessential', 'serendipity', 'lackadaisical', 'magnanimous', 'nefarious', 'obfuscate', 'perfidious', 'pusillanimous', 'querulous', 'sagacious', 'sanguine', 'taciturn', 'unctuous', 'verbose', 'zealous'],
+      famousPeople: ['Marilyn Monroe', 'Albert Einstein', 'Leonardo da Vinci', 'Iron Man', 'Batman', 'Superman', 'Harry Potter', 'Hermione Granger', 'Luke Skywalker', 'Darth Vader', 'Sherlock Holmes', 'James Bond', 'Spider-Man', 'Wonder Woman', 'Captain America', 'Thor', 'Hulk', 'Black Widow', 'Jon Snow', 'Daenerys Targaryen']
     };
 
-    // Generate 4-digit room code
-    window.generateRoomCode = function() {
-      return Math.floor(1000 + Math.random() * 9000).toString();
-    };
-
-    // Create room
     window.createRoom = async function() {
-      const password = document.getElementById('createPassword').value;
-      if (!password || password.length < 4) {
-        alert('Password must be at least 4 characters');
-        return;
-      }
-
-      const roomCode = window.generateRoomCode();
-      const roomRef = ref(database, `rooms/${roomCode}`);
+      const pwd = document.getElementById('createPassword').value;
+      if (!pwd || pwd.length < 4) return alert('Password must be 4+ chars');
       
-      await set(roomRef, {
-        password: password,
-        host: Date.now(),
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      await set(ref(db, `rooms/${code}`), {
+        password: pwd,
         players: [],
         currentWord: '',
         currentWordType: '',
         gameMode: 'all_see',
         round: 0,
         excludedPlayer: null,
-        wordCategories: {
-          nouns: true,
-          adjectives: true,
-          famousPeople: false,
-          fancyWords: false
-        },
-        createdAt: Date.now()
+        wordCategories: { nouns: true, adjectives: true, famousPeople: false, fancyWords: false },
+        showDefinitions: {}
       });
-
-      window.gameState.roomCode = roomCode;
-      window.gameState.isHost = true;
-      window.gameState.inRoom = true;
       
+      window.roomCode = code;
       document.getElementById('lobby').classList.add('hidden');
       document.getElementById('gameRoom').classList.remove('hidden');
-      document.getElementById('roomCodeDisplay').textContent = roomCode;
-      
-      window.listenToRoom(roomCode);
+      document.getElementById('roomCodeDisplay').textContent = code;
+      listenToRoom(code);
     };
 
-    // Join room
     window.joinRoom = async function() {
-      const roomCode = document.getElementById('joinRoomCode').value;
-      const password = document.getElementById('joinPassword').value;
-
-      if (!roomCode || !password) {
-        alert('Please enter room code and password');
-        return;
-      }
-
-      const roomRef = ref(database, `rooms/${roomCode}`);
+      const code = document.getElementById('joinRoomCode').value;
+      const pwd = document.getElementById('joinPassword').value;
+      if (!code || !pwd) return alert('Enter code and password');
       
-      onValue(roomRef, (snapshot) => {
-        const data = snapshot.val();
+      onValue(ref(db, `rooms/${code}`), (snap) => {
+        const data = snap.val();
+        if (!data) return alert('Room not found');
+        if (data.password !== pwd) return alert('Wrong password');
+        if (data.players && data.players.length >= 8) return alert('Room full');
         
-        if (!data) {
-          alert('Room not found');
-          return;
-        }
-
-        if (data.password !== password) {
-          alert('Incorrect password');
-          return;
-        }
-
-        if (data.players && data.players.length >= 8) {
-          alert('Room is full (8 players max)');
-          return;
-        }
-
-        window.gameState.roomCode = roomCode;
-        window.gameState.isHost = false;
-        window.gameState.inRoom = true;
-        
+        window.roomCode = code;
         document.getElementById('lobby').classList.add('hidden');
         document.getElementById('gameRoom').classList.remove('hidden');
-        document.getElementById('roomCodeDisplay').textContent = roomCode;
-        
-        window.listenToRoom(roomCode);
+        document.getElementById('roomCodeDisplay').textContent = code;
+        listenToRoom(code);
       }, { onlyOnce: true });
     };
 
-    // Listen to room updates
-    window.listenToRoom = function(roomCode) {
-      const roomRef = ref(database, `rooms/${roomCode}`);
+    function listenToRoom(code) {
+      onValue(ref(db, `rooms/${code}`), (snap) => {
+        const data = snap.val();
+        if (data) updateUI(data);
+      });
+    }
+
+    function updateUI(data) {
+      // Update player count
+      document.getElementById('playerCount').textContent = data.players ? data.players.length : 0;
       
-      onValue(roomRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          window.updateGameUI(data);
+      // Update players list
+      const list = document.getElementById('playersList');
+      list.innerHTML = '';
+      if (data.players && data.players.length > 0) {
+        data.players.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';
+          div.innerHTML = `
+            <span class="flex-1 font-medium">${p.name}</span>
+            <button onclick="setTeam(${p.id}, 'A')" class="px-3 py-1 rounded text-white" style="background-color: ${p.team === 'A' ? '#5E5394' : '#E5E7EB'}; color: ${p.team === 'A' ? '#fff' : '#000'}">Team A</button>
+            <button onclick="setTeam(${p.id}, 'B')" class="px-3 py-1 rounded text-white" style="background-color: ${p.team === 'B' ? '#E85987' : '#E5E7EB'}; color: ${p.team === 'B' ? '#fff' : '#000'}">Team B</button>
+            <button onclick="setTeam(${p.id}, null)" class="px-3 py-1 rounded ${p.team === null ? 'bg-gray-400 text-white' : 'bg-gray-200'}">None</button>
+            <button onclick="removePlayer(${p.id})" class="px-3 py-1 bg-red-500 text-white rounded">Remove</button>
+          `;
+          list.appendChild(div);
+        });
+      }
+      
+      // Update game mode buttons
+      ['all_see', 'team_alternate', 'random_player'].forEach(mode => {
+        const btn = document.getElementById(`mode_${mode}`);
+        if (data.gameMode === mode) {
+          btn.style.backgroundColor = '#29522d';
+          btn.style.color = '#fff';
+        } else {
+          btn.style.backgroundColor = '#E8F4D0';
+          btn.style.color = '#000';
         }
       });
-    };
-
-    // Update game UI from Firebase data
-    window.updateGameUI = function(data) {
-      // Update players list
-      const playersContainer = document.getElementById('playersList');
-      playersContainer.innerHTML = '';
       
-      if (data.players && data.players.length > 0) {
-        data.players.forEach(player => {
-          const playerDiv = document.createElement('div');
-          playerDiv.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';
-          playerDiv.innerHTML = `
-            <span class="flex-1 font-medium">${player.name}</span>
-            <span class="text-sm text-gray-500">Team: ${player.team || 'None'}</span>
-          `;
-          playersContainer.appendChild(playerDiv);
-        });
-      } else {
-        playersContainer.innerHTML = '<p class="text-gray-500 text-sm">No players yet</p>';
+      // Update category checkboxes
+      if (data.wordCategories) {
+        document.getElementById('cat_nouns').checked = data.wordCategories.nouns;
+        document.getElementById('cat_adjectives').checked = data.wordCategories.adjectives;
+        document.getElementById('cat_fancy').checked = data.wordCategories.fancyWords;
+        document.getElementById('cat_famous').checked = data.wordCategories.famousPeople;
       }
+      
+      // Display player cards with words
+      displayPlayerCards(data);
+    }
 
-      // Update current word
-      if (data.currentWord) {
-        document.getElementById('currentWord').textContent = data.currentWord;
-        document.getElementById('wordDisplay').classList.remove('hidden');
-      } else {
-        document.getElementById('wordDisplay').classList.add('hidden');
-      }
-
-      // Update game mode
-      document.getElementById('gameModeDisplay').textContent = data.gameMode || 'all_see';
-    };
-
-    // Add player to room
-    window.addPlayerToRoom = async function() {
-      const playerName = document.getElementById('playerName').value;
-      if (!playerName) {
-        alert('Please enter a player name');
+    function displayPlayerCards(data) {
+      const container = document.getElementById('playersDisplay');
+      if (!data.currentWord || !data.players || data.players.length === 0) {
+        container.innerHTML = '';
         return;
       }
-
-      const roomRef = ref(database, `rooms/${window.gameState.roomCode}/players`);
       
-      const snapshot = await new Promise(resolve => {
-        onValue(roomRef, resolve, { onlyOnce: true });
-      });
-
-      const players = snapshot.val() || [];
+      const teamA = data.players.filter(p => p.team === 'A');
+      const teamB = data.players.filter(p => p.team === 'B');
+      const noTeam = data.players.filter(p => !p.team);
       
-      if (players.length >= 8) {
-        alert('Room is full (8 players max)');
-        return;
+      let html = '';
+      
+      if (noTeam.length > 0) {
+        html += '<h3 class="text-lg font-semibold mb-2 text-gray-700">No Team</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">';
+        noTeam.forEach(p => html += createPlayerCard(p, data, null));
+        html += '</div>';
       }
+      
+      if (teamA.length > 0) {
+        html += '<h3 class="text-lg font-semibold mb-2" style="color: #5E5394;">Team A</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">';
+        teamA.forEach(p => html += createPlayerCard(p, data, 'A'));
+        html += '</div>';
+      }
+      
+      if (teamB.length > 0) {
+        html += '<h3 class="text-lg font-semibold mb-2" style="color: #E85987;">Team B</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">';
+        teamB.forEach(p => html += createPlayerCard(p, data, 'B'));
+        html += '</div>';
+      }
+      
+      container.innerHTML = html;
+    }
 
-      const newPlayer = {
-        id: Date.now(),
-        name: playerName,
-        team: null
-      };
+    function createPlayerCard(player, data, team) {
+      const canSee = canPlayerSeeWord(player, data);
+      const borderColor = team === 'A' ? '#5E5394' : team === 'B' ? '#E85987' : '#D1D5DB';
+      const showDef = data.showDefinitions && data.showDefinitions[player.id];
+      
+      let defUrl = '#';
+      if (data.currentWordType === 'person') {
+        defUrl = `https://en.wikipedia.org/wiki/${data.currentWord.replace(/ /g, '_')}`;
+      } else if (data.currentWordType === 'fancy') {
+        defUrl = `https://www.thesaurus.com/browse/${data.currentWord.toLowerCase()}`;
+      } else {
+        defUrl = `https://www.dictionary.com/browse/${data.currentWord.toLowerCase()}`;
+      }
+      
+      return `
+        <div class="rounded-lg shadow-md p-4 border-2" style="background-color: #F5E6D3; border-color: ${borderColor};">
+          <h4 class="font-semibold text-lg mb-3">${player.name}</h4>
+          ${canSee ? `
+            <div class="rounded-lg p-4 mb-3" style="background-color: #E8F4D0;">
+              <p class="text-2xl font-bold text-center" style="color: #5E5394;">${data.currentWord}</p>
+            </div>
+            <button onclick="toggleDef(${player.id})" class="w-full px-4 py-2 text-white rounded-lg mb-2" style="background-color: #E85987;">${showDef ? 'Hide' : 'Show'} Info</button>
+            ${showDef ? `<a href="${defUrl}" target="_blank" class="block w-full px-4 py-2 text-center text-white rounded-lg" style="background-color: #5E5394;">View Definition</a>` : ''}
+          ` : `
+            <div class="bg-gray-200 rounded-lg p-4 text-center">
+              <p class="text-gray-500 font-medium">Word Hidden</p>
+            </div>
+          `}
+        </div>
+      `;
+    }
 
-      players.push(newPlayer);
+    function canPlayerSeeWord(player, data) {
+      if (!data.currentWord) return false;
+      
+      if (data.gameMode === 'all_see') return true;
+      
+      if (data.gameMode === 'team_alternate') {
+        if (!player.team) return true;
+        const teamASees = data.round % 2 === 1;
+        return (player.team === 'A' && teamASees) || (player.team === 'B' && !teamASees);
+      }
+      
+      if (data.gameMode === 'random_player') {
+        return player.id !== data.excludedPlayer;
+      }
+      
+      return false;
+    }
 
-      await set(roomRef, players);
-      document.getElementById('playerName').value = '';
+    window.addPlayer = async function() {
+      const name = document.getElementById('playerName').value.trim();
+      if (!name) return alert('Enter name');
+      
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        const players = data.players || [];
+        if (players.length >= 8) return alert('Room full');
+        
+        players.push({ id: Date.now(), name, team: null });
+        await update(ref(db, `rooms/${window.roomCode}`), { players });
+        document.getElementById('playerName').value = '';
+      }, { onlyOnce: true });
     };
 
-    // Generate new word
+    window.setTeam = async function(id, team) {
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        const players = data.players.map(p => p.id === id ? { ...p, team } : p);
+        await update(ref(db, `rooms/${window.roomCode}`), { players });
+      }, { onlyOnce: true });
+    };
+
+    window.removePlayer = async function(id) {
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        const players = data.players.filter(p => p.id !== id);
+        await update(ref(db, `rooms/${window.roomCode}`), { players });
+      }, { onlyOnce: true });
+    };
+
+    window.randomizeTeams = async function() {
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        if (!data.players || data.players.length < 2) return alert('Need 2+ players');
+        
+        const shuffled = [...data.players].sort(() => Math.random() - 0.5);
+        const mid = Math.ceil(shuffled.length / 2);
+        const players = shuffled.map((p, i) => ({ ...p, team: i < mid ? 'A' : 'B' }));
+        await update(ref(db, `rooms/${window.roomCode}`), { players });
+      }, { onlyOnce: true });
+    };
+
+    window.setGameMode = async function(mode) {
+      await update(ref(db, `rooms/${window.roomCode}`), { gameMode: mode });
+    };
+
+    window.toggleCategory = async function(cat) {
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        const cats = data.wordCategories || {};
+        cats[cat] = !cats[cat];
+        await update(ref(db, `rooms/${window.roomCode}`), { wordCategories: cats });
+      }, { onlyOnce: true });
+    };
+
     window.generateWord = async function() {
-      const roomRef = ref(database, `rooms/${window.gameState.roomCode}`);
-      
-      const snapshot = await new Promise(resolve => {
-        onValue(roomRef, resolve, { onlyOnce: true });
-      });
-
-      const data = snapshot.val();
-      let wordPool = [];
-
-      if (data.wordCategories.nouns) wordPool = [...wordPool, ...window.NOUNS.map(w => ({ word: w, type: 'noun' }))];
-      if (data.wordCategories.adjectives) wordPool = [...wordPool, ...window.ADJECTIVES.map(w => ({ word: w, type: 'adjective' }))];
-      if (data.wordCategories.famousPeople) wordPool = [...wordPool, ...window.FAMOUS_PEOPLE.map(w => ({ word: w, type: 'person' }))];
-      if (data.wordCategories.fancyWords) wordPool = [...wordPool, ...window.FANCY_WORDS.map(w => ({ word: w, type: 'fancy' }))];
-
-      if (wordPool.length === 0) {
-        alert('Please select at least one word category!');
-        return;
-      }
-
-      const randomItem = wordPool[Math.floor(Math.random() * wordPool.length)];
-
-      await update(roomRef, {
-        currentWord: randomItem.word,
-        currentWordType: randomItem.type,
-        round: (data.round || 0) + 1
-      });
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        let pool = [];
+        if (data.wordCategories.nouns) pool.push(...window.WORDS.nouns.map(w => ({ word: w, type: 'noun' })));
+        if (data.wordCategories.adjectives) pool.push(...window.WORDS.adjectives.map(w => ({ word: w, type: 'adjective' })));
+        if (data.wordCategories.fancyWords) pool.push(...window.WORDS.fancyWords.map(w => ({ word: w, type: 'fancy' })));
+        if (data.wordCategories.famousPeople) pool.push(...window.WORDS.famousPeople.map(w => ({ word: w, type: 'person' })));
+        
+        if (pool.length === 0) return alert('Select a category');
+        
+        const item = pool[Math.floor(Math.random() * pool.length)];
+        const updates = {
+          currentWord: item.word,
+          currentWordType: item.type,
+          round: (data.round || 0) + 1,
+          showDefinitions: {}
+        };
+        
+        if (data.gameMode === 'random_player' && data.players && data.players.length > 0) {
+          updates.excludedPlayer = data.players[Math.floor(Math.random() * data.players.length)].id;
+        }
+        
+        await update(ref(db, `rooms/${window.roomCode}`), updates);
+      }, { onlyOnce: true });
     };
 
-    // Leave room
+    window.toggleDef = async function(playerId) {
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        const defs = data.showDefinitions || {};
+        defs[playerId] = !defs[playerId];
+        await update(ref(db, `rooms/${window.roomCode}`), { showDefinitions: defs });
+      }, { onlyOnce: true });
+    };
+
     window.leaveRoom = function() {
-      window.gameState.inRoom = false;
-      window.gameState.roomCode = null;
-      
+      window.roomCode = null;
       document.getElementById('gameRoom').classList.add('hidden');
       document.getElementById('lobby').classList.remove('hidden');
     };
-  </script>
-  <style>
-    .hidden { display: none !important; }
-  </style>
-</head>
-<body style="background-color: #D4E4DD;" class="min-h-screen p-8">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-4xl font-bold text-center mb-2" style="color: #4E5987;">Team Word Game</h1>
-    <p class="text-center text-gray-600 mb-8">Multi-player word guessing game!</p>
-
-    <!-- Lobby (Create or Join Room) -->
-    <div id="lobby">
-      <div class="grid md:grid-cols-2 gap-6">
-        <!-- Create Room -->
-        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
-          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Create Room</h2>
-          <input 
-            type="password" 
-            id="createPassword" 
-            placeholder="Set room password (min 4 chars)"
-            class="w-full px-4 py-2 mb-4 border rounded-lg"
-            minlength="4"
-          />
-          <button 
-            onclick="window.createRoom()"
-            class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90"
-            style="background-color: #1EA7D8;"
-          >
-            Create Room
-          </button>
-        </div>
-
-        <!-- Join Room -->
-        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
-          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Join Room</h2>
-          <input 
-            type="text" 
-            id="joinRoomCode" 
-            placeholder="Enter 4-digit room code"
-            class="w-full px-4 py-2 mb-3 border rounded-lg"
-            maxlength="4"
-          />
-          <input 
-            type="password" 
-            id="joinPassword" 
-            placeholder="Enter room password"
-            class="w-full px-4 py-2 mb-4 border rounded-lg"
-          />
-          <button 
-            onclick="window.joinRoom()"
-            class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90"
-            style="background-color: #E85987;"
-          >
-            Join Room
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Game Room -->
-    <div id="gameRoom" class="hidden">
-      <!-- Room Info -->
-      <div class="rounded-lg shadow-md p-6 mb-6 flex justify-between items-center" style="background-color: #F5E6D3;">
-        <div>
-          <h2 class="text-xl font-semibold">Room Code: <span id="roomCodeDisplay" class="font-bold text-3xl" style="color: #1EA7D8;"></span></h2>
-          <p class="text-sm text-gray-600">Share this code with others to join</p>
-        </div>
-        <button 
-          onclick="window.leaveRoom()"
-          class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-        >
-          Leave Room
-        </button>
-      </div>
-
-      <!-- Add Player -->
-      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
-        <h3 class="text-lg font-semibold mb-3">Add Player</h3>
-        <div class="flex gap-2">
-          <input 
-            type="text" 
-            id="playerName" 
-            placeholder="Enter player name"
-            class="flex-1 px-4 py-2 border rounded-lg"
-            maxlength="20"
-          />
-          <button 
-            onclick="window.addPlayerToRoom()"
-            class="px-6 py-2 text-white rounded-lg hover:opacity-90"
-            style="background-color: #E85987;"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-
-      <!-- Players List -->
-      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
-        <h3 class="text-lg font-semibold mb-3">Players (<span id="playerCount">0</span>/8)</h3>
-        <div id="playersList" class="space-y-2">
-          <p class="text-gray-500 text-sm">No players yet</p>
-        </div>
-      </div>
-
-      <!-- Generate Word -->
-      <div class="rounded-lg shadow-md p-6 mb-6 text-center" style="background-color: #F5E6D3;">
-        <button 
-          onclick="window.generateWord()"
-          class="px-8 py-4 text-white rounded-lg text-xl font-semibold hover:opacity-90"
-          style="background-color: #1EA7D8;"
-        >
-          🎲 Generate Random Word
-        </button>
-      </div>
-
-      <!-- Word Display -->
-      <div id="wordDisplay" class="rounded-lg shadow-md p-8 mb-6 text-center hidden" style="background-color: #E8F4D0;">
-        <p class="text-5xl font-bold mb-2" style="color: #5E5394;" id="currentWord"></p>
-        <a 
-          id="wordLink" 
-          href="#" 
-          target="_blank"
-          class="inline-block mt-4 px-6 py-2 text-white rounded-lg hover:opacity-90"
-          style="background-color: #5E5394;"
-        >
-          View Definition
-        </a>
-      </div>
-
-      <!-- Game Info -->
-      <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
-        <p class="text-sm text-gray-600">Game Mode: <span id="gameModeDisplay" class="font-semibold">all_see</span></p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Update word link
-    window.updateGameUI = (function() {
-      const original = window.updateGameUI;
-      return function(data) {
-        if (original) original(data);
-        
-        // Update word link
-        if (data.currentWord) {
-          const link = document.getElementById('wordLink');
-          if (data.currentWordType === 'person') {
-            link.href = `https://en.wikipedia.org/wiki/${data.currentWord.replace(/ /g, '_')}`;
-          } else if (data.currentWordType === 'fancy') {
-            link.href = `https://www.thesaurus.com/browse/${data.currentWord.toLowerCase()}`;
-          } else {
-            link.href = `https://www.dictionary.com/browse/${data.currentWord.toLowerCase()}`;
-          }
-        }
-        
-        // Update player count
-        const count = data.players ? data.players.length : 0;
-        const countEl = document.getElementById('playerCount');
-        if (countEl) countEl.textContent = count;
-      };
-    })();
   </script>
 </body>
 </html>
