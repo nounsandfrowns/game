@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Team Word Game - Multi-player</title>
+  <title>Word Randomizer For Games and Fun and Friends</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .hidden { display: none !important; }
@@ -20,11 +20,13 @@
       <div class="grid md:grid-cols-2 gap-6">
         <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
           <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Create Room</h2>
+          <input type="text" id="createPlayerName" placeholder="Your name" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="20">
           <input type="password" id="createPassword" placeholder="Set password (min 4 chars)" class="w-full px-4 py-2 mb-4 border rounded-lg" minlength="4">
           <button onclick="createRoom()" class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90" style="background-color: #1EA7D8;">Create Room</button>
         </div>
         <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
           <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Join Room</h2>
+          <input type="text" id="joinPlayerName" placeholder="Your name" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="20">
           <input type="text" id="joinRoomCode" placeholder="4-digit room code" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="4">
           <input type="password" id="joinPassword" placeholder="Room password" class="w-full px-4 py-2 mb-4 border rounded-lg">
           <button onclick="joinRoom()" class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90" style="background-color: #E85987;">Join Room</button>
@@ -38,19 +40,15 @@
         <div class="flex justify-between items-center">
           <div>
             <h2 class="text-xl font-semibold">Room: <span id="roomCodeDisplay" class="font-bold text-2xl" style="color: #1EA7D8;"></span></h2>
-            <p class="text-sm text-gray-600">Share this code</p>
+            <p class="text-sm text-gray-600">You are: <span id="currentPlayerName" class="font-semibold" style="color: #E85987;"></span></p>
           </div>
           <button onclick="leaveRoom()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Leave</button>
         </div>
       </div>
 
       <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
-        <h3 class="font-semibold mb-2">Players (<span id="playerCount">0</span>/8)</h3>
-        <div class="flex gap-2 mb-4">
-          <input type="text" id="playerName" placeholder="Player name" class="flex-1 px-4 py-2 border rounded-lg" maxlength="20">
-          <button onclick="addPlayer()" class="px-6 py-2 text-white rounded-lg" style="background-color: #E85987;">Add</button>
-          <button onclick="randomizeTeams()" class="px-6 py-2 text-white rounded-lg" style="background-color: #5E5394;">⚡ Randomize Teams</button>
-        </div>
+        <h3 class="font-semibold mb-4">Players in Room (<span id="playerCount">0</span>/8)</h3>
+        <button onclick="randomizeTeams()" class="w-full px-6 py-2 text-white rounded-lg mb-4" style="background-color: #5E5394;">⚡ Randomize Teams</button>
         <div id="playersList" class="space-y-2"></div>
       </div>
 
@@ -108,8 +106,10 @@
     const db = getDatabase(app);
     window.db = db;
     window.roomCode = null;
+    window.currentPlayerId = null;
+    window.currentPlayerName = null;
 
-    // Word lists - keeping your full lists
+    // Word lists
     window.WORDS = {
       nouns: ['elephant', 'mountain', 'symphony', 'laboratory', 'adventure', 'telescope', 'cathedral', 'volcano', 'library', 'hurricane', 'galaxy', 'fortress', 'ocean', 'pyramid', 'metropolis', 'compass', 'desert', 'waterfall', 'monastery', 'carnival', 'labyrinth', 'meadow', 'archipelago', 'castle', 'valley', 'aurora', 'canyon', 'jungle', 'peninsula', 'sanctuary', 'butterfly', 'dragon', 'unicorn', 'phoenix', 'lighthouse', 'glacier', 'earthquake', 'tornado', 'avalanche', 'eclipse', 'comet', 'nebula', 'asteroid', 'satellite', 'rocket', 'submarine', 'helicopter', 'parachute', 'microscope', 'binoculars'],
       adjectives: ['magnificent', 'peculiar', 'tremendous', 'delicate', 'mysterious', 'brilliant', 'ancient', 'graceful', 'turbulent', 'serene', 'spectacular', 'elegant', 'ferocious', 'luminous', 'tranquil', 'vibrant', 'majestic', 'bizarre', 'harmonious', 'resilient', 'exquisite', 'radiant', 'enigmatic', 'colossal', 'whimsical', 'pristine', 'formidable', 'ethereal', 'splendid', 'dazzling', 'gleaming', 'shimmering', 'sparkling', 'glittering', 'blazing', 'glowing', 'flickering', 'twinkling', 'shining', 'vivid', 'bold', 'striking', 'dramatic', 'intense', 'powerful', 'mighty', 'strong', 'robust', 'sturdy', 'solid'],
@@ -118,13 +118,21 @@
     };
 
     window.createRoom = async function() {
+      const name = document.getElementById('createPlayerName').value.trim();
       const pwd = document.getElementById('createPassword').value;
+      
+      if (!name) return alert('Enter your name');
       if (!pwd || pwd.length < 4) return alert('Password must be 4+ chars');
       
       const code = Math.floor(1000 + Math.random() * 9000).toString();
+      const playerId = Date.now();
+      
+      window.currentPlayerId = playerId;
+      window.currentPlayerName = name;
+      
       await set(ref(db, `rooms/${code}`), {
         password: pwd,
-        players: [],
+        players: [{ id: playerId, name, team: null }],
         currentWord: '',
         currentWordType: '',
         gameMode: 'all_see',
@@ -138,24 +146,38 @@
       document.getElementById('lobby').classList.add('hidden');
       document.getElementById('gameRoom').classList.remove('hidden');
       document.getElementById('roomCodeDisplay').textContent = code;
+      document.getElementById('currentPlayerName').textContent = name;
       listenToRoom(code);
     };
 
     window.joinRoom = async function() {
+      const name = document.getElementById('joinPlayerName').value.trim();
       const code = document.getElementById('joinRoomCode').value;
       const pwd = document.getElementById('joinPassword').value;
+      
+      if (!name) return alert('Enter your name');
       if (!code || !pwd) return alert('Enter code and password');
       
-      onValue(ref(db, `rooms/${code}`), (snap) => {
+      onValue(ref(db, `rooms/${code}`), async (snap) => {
         const data = snap.val();
         if (!data) return alert('Room not found');
         if (data.password !== pwd) return alert('Wrong password');
-        if (data.players && data.players.length >= 8) return alert('Room full');
+        
+        const players = data.players || [];
+        if (players.length >= 8) return alert('Room full (8 players max)');
+        
+        const playerId = Date.now();
+        window.currentPlayerId = playerId;
+        window.currentPlayerName = name;
+        
+        players.push({ id: playerId, name, team: null });
+        await update(ref(db, `rooms/${code}`), { players });
         
         window.roomCode = code;
         document.getElementById('lobby').classList.add('hidden');
         document.getElementById('gameRoom').classList.remove('hidden');
         document.getElementById('roomCodeDisplay').textContent = code;
+        document.getElementById('currentPlayerName').textContent = name;
         listenToRoom(code);
       }, { onlyOnce: true });
     };
@@ -177,9 +199,10 @@
       if (data.players && data.players.length > 0) {
         data.players.forEach(p => {
           const div = document.createElement('div');
-          div.className = 'flex items-center gap-2 p-2 bg-gray-50 rounded';
+          const isCurrentPlayer = p.id === window.currentPlayerId;
+          div.className = `flex items-center gap-2 p-2 rounded ${isCurrentPlayer ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'}`;
           div.innerHTML = `
-            <span class="flex-1 font-medium">${p.name}</span>
+            <span class="flex-1 font-medium">${p.name}${isCurrentPlayer ? ' (You)' : ''}</span>
             <button onclick="setTeam(${p.id}, 'A')" class="px-3 py-1 rounded text-white" style="background-color: ${p.team === 'A' ? '#5E5394' : '#E5E7EB'}; color: ${p.team === 'A' ? '#fff' : '#000'}">Team A</button>
             <button onclick="setTeam(${p.id}, 'B')" class="px-3 py-1 rounded text-white" style="background-color: ${p.team === 'B' ? '#E85987' : '#E5E7EB'}; color: ${p.team === 'B' ? '#fff' : '#000'}">Team B</button>
             <button onclick="setTeam(${p.id}, null)" class="px-3 py-1 rounded ${p.team === null ? 'bg-gray-400 text-white' : 'bg-gray-200'}">None</button>
@@ -297,21 +320,6 @@
       return false;
     }
 
-    window.addPlayer = async function() {
-      const name = document.getElementById('playerName').value.trim();
-      if (!name) return alert('Enter name');
-      
-      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
-        const data = snap.val();
-        const players = data.players || [];
-        if (players.length >= 8) return alert('Room full');
-        
-        players.push({ id: Date.now(), name, team: null });
-        await update(ref(db, `rooms/${window.roomCode}`), { players });
-        document.getElementById('playerName').value = '';
-      }, { onlyOnce: true });
-    };
-
     window.setTeam = async function(id, team) {
       onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
         const data = snap.val();
@@ -389,8 +397,21 @@
       }, { onlyOnce: true });
     };
 
-    window.leaveRoom = function() {
+    window.leaveRoom = async function() {
+      if (window.currentPlayerId && window.roomCode) {
+        // Remove current player from the room
+        onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+          const data = snap.val();
+          if (data && data.players) {
+            const players = data.players.filter(p => p.id !== window.currentPlayerId);
+            await update(ref(db, `rooms/${window.roomCode}`), { players });
+          }
+        }, { onlyOnce: true });
+      }
+      
       window.roomCode = null;
+      window.currentPlayerId = null;
+      window.currentPlayerName = null;
       document.getElementById('gameRoom').classList.add('hidden');
       document.getElementById('lobby').classList.remove('hidden');
     };
