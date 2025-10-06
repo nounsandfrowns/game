@@ -3,29 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Team Word Game - Multi-player</title>
+  <title>Word Randomizer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .hidden { display: none !important; }
     body { margin: 0; padding: 0; }
+    #canvas { 
+      touch-action: none; 
+      cursor: crosshair;
+      border: 2px solid #4E5987;
+    }
   </style>
 </head>
-<body style="background-color: #D4E4DD;" class="min-h-screen p-8">
+<body style="background-color: #D4E4DD;" class="min-h-screen p-4 md:p-8">
   <div class="max-w-6xl mx-auto" id="app">
-    <h1 class="text-4xl font-bold text-center mb-2" style="color: #4E5987;">Team Word Game</h1>
-    <p class="text-center text-gray-600 mb-8">Multi-player word guessing game!</p>
+    <h1 class="text-3xl md:text-4xl font-bold text-center mb-2" style="color: #4E5987;">Word Randomizer</h1>
+    <p class="text-center text-gray-600 mb-8">For games with friends for fun</p>
 
     <!-- Lobby -->
     <div id="lobby">
       <div class="grid md:grid-cols-2 gap-6">
-        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
-          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Create Room</h2>
+        <div class="rounded-lg shadow-md p-4 md:p-6" style="background-color: #F5E6D3;">
+          <h2 class="text-xl md:text-2xl font-bold mb-4" style="color: #4E5987;">Create Room</h2>
           <input type="text" id="createPlayerName" placeholder="Your name" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="20">
           <input type="password" id="createPassword" placeholder="Set password (min 4 chars)" class="w-full px-4 py-2 mb-4 border rounded-lg" minlength="4">
           <button onclick="createRoom()" class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90" style="background-color: #1EA7D8;">Create Room</button>
         </div>
-        <div class="rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
-          <h2 class="text-2xl font-bold mb-4" style="color: #4E5987;">Join Room</h2>
+        <div class="rounded-lg shadow-md p-4 md:p-6" style="background-color: #F5E6D3;">
+          <h2 class="text-xl md:text-2xl font-bold mb-4" style="color: #4E5987;">Join Room</h2>
           <input type="text" id="joinPlayerName" placeholder="Your name" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="20">
           <input type="text" id="joinRoomCode" placeholder="4-digit room code" class="w-full px-4 py-2 mb-3 border rounded-lg" maxlength="4">
           <input type="password" id="joinPassword" placeholder="Room password" class="w-full px-4 py-2 mb-4 border rounded-lg">
@@ -36,55 +41,103 @@
 
     <!-- Game Room -->
     <div id="gameRoom" class="hidden">
-      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
-        <div class="flex justify-between items-center">
+      <div class="rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
+        <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
           <div>
-            <h2 class="text-xl font-semibold">Room: <span id="roomCodeDisplay" class="font-bold text-2xl" style="color: #1EA7D8;"></span></h2>
+            <h2 class="text-lg md:text-xl font-semibold">Room: <span id="roomCodeDisplay" class="font-bold text-xl md:text-2xl" style="color: #1EA7D8;"></span></h2>
             <p class="text-sm text-gray-600">You are: <span id="currentPlayerName" class="font-semibold" style="color: #E85987;"></span></p>
           </div>
-          <button onclick="leaveRoom()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Leave</button>
+          <button onclick="leaveRoom()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 w-full md:w-auto">Leave</button>
         </div>
       </div>
 
-      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
+      <div class="rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
         <h3 class="font-semibold mb-4">Players in Room (<span id="playerCount">0</span>/8)</h3>
         <button onclick="randomizeTeams()" class="w-full px-6 py-2 text-white rounded-lg mb-4" style="background-color: #5E5394;">⚡ Randomize Teams</button>
         <div id="playersList" class="space-y-2"></div>
       </div>
 
-      <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #F5E6D3;">
+      <div class="rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
         <h3 class="font-semibold mb-2">Game Mode:</h3>
-        <div class="flex flex-wrap gap-2 mb-4">
-          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg">Everyone Sees</button>
-          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg">Team Alternating</button>
-          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg">Random Player Excluded</button>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg text-sm">Everyone Sees</button>
+          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg text-sm">Team Alternating</button>
+          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg text-sm">Random Player Excluded</button>
         </div>
         <h3 class="font-semibold mb-2">Word Categories:</h3>
-        <div class="flex flex-wrap gap-4">
-          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg text-sm" style="background-color: #1b1531; color: white;">
             <input type="checkbox" id="cat_nouns" checked onclick="toggleCategory('nouns')">
             <span>Nouns</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+          <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg text-sm" style="background-color: #1b1531; color: white;">
             <input type="checkbox" id="cat_adjectives" checked onclick="toggleCategory('adjectives')">
             <span>Adjectives</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+          <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg text-sm" style="background-color: #1b1531; color: white;">
             <input type="checkbox" id="cat_fancy" onclick="toggleCategory('fancyWords')">
             <span>Fancy Words</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg" style="background-color: #1b1531; color: white;">
+          <label class="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg text-sm" style="background-color: #1b1531; color: white;">
             <input type="checkbox" id="cat_famous" onclick="toggleCategory('famousPeople')">
             <span>Famous People</span>
           </label>
         </div>
       </div>
 
-      <div class="text-center mb-6 rounded-lg shadow-md p-6" style="background-color: #F5E6D3;">
-        <button onclick="generateWord()" class="px-8 py-4 text-white rounded-lg text-xl font-semibold" style="background-color: #1EA7D8;">🎲 Generate Word</button>
+      <div class="text-center mb-6 rounded-lg shadow-md p-4 md:p-6" style="background-color: #F5E6D3;">
+        <button onclick="generateWord()" class="w-full px-6 md:px-8 py-3 md:py-4 text-white rounded-lg text-lg md:text-xl font-semibold" style="background-color: #1EA7D8;">🎲 Generate Word</button>
       </div>
 
       <div id="playersDisplay"></div>
+
+      <!-- Answer Submission Area -->
+      <div id="answerSection" class="hidden rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
+        <h3 class="font-semibold mb-3">Don't have pen and paper? Write or draw your answer here:</h3>
+        
+        <div class="mb-3 flex flex-wrap gap-2 items-center">
+          <span class="text-sm font-medium">Timer:</span>
+          <button onclick="setTimer(30)" id="timer30" class="px-3 py-1 rounded text-sm bg-gray-200">30s</button>
+          <button onclick="setTimer(60)" id="timer60" class="px-3 py-1 rounded text-sm bg-gray-200">60s</button>
+          <button onclick="setTimer(90)" id="timer90" class="px-3 py-1 rounded text-sm bg-gray-200">90s</button>
+          <button onclick="setTimer(120)" id="timer120" class="px-3 py-1 rounded text-sm bg-gray-200">120s</button>
+          <button onclick="startTimer()" class="px-4 py-1 rounded text-sm text-white" style="background-color: #1EA7D8;">Start Timer</button>
+          <div id="timerDisplay" class="text-2xl font-bold ml-auto" style="color: #E85987;">--</div>
+        </div>
+
+        <div class="mb-3 flex flex-wrap gap-2">
+          <button onclick="setTool('pen')" id="tool_pen" class="px-3 py-1 rounded text-sm" style="background-color: #5E5394; color: white;">✏️ Pen</button>
+          <button onclick="setTool('eraser')" id="tool_eraser" class="px-3 py-1 rounded text-sm bg-gray-200">🧹 Eraser</button>
+          <button onclick="clearCanvas()" class="px-3 py-1 rounded text-sm bg-gray-200">🗑️ Clear</button>
+          <input type="color" id="colorPicker" value="#000000" class="h-8 w-12 rounded">
+          <input type="range" id="brushSize" min="1" max="20" value="3" class="flex-1 min-w-[100px]">
+        </div>
+
+        <canvas id="canvas" width="600" height="400" class="w-full bg-white rounded-lg mb-3"></canvas>
+        
+        <div class="flex gap-2">
+          <button onclick="submitAnswer()" id="submitBtn" class="flex-1 px-6 py-3 text-white rounded-lg font-semibold" style="background-color: #E85987;">Submit Answer</button>
+          <div id="submissionStatus" class="flex-1 px-6 py-3 bg-gray-100 rounded-lg text-center font-medium text-gray-600">
+            Waiting: <span id="submittedCount">0</span>/<span id="totalPlayers">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Answer Display Section -->
+      <div id="answersSection" class="hidden rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
+        <h3 class="font-semibold mb-3">Submitted Answers</h3>
+        
+        <div class="mb-4 flex flex-wrap gap-2">
+          <span class="text-sm font-medium">Show to:</span>
+          <button onclick="setAnswerVisibility('all')" id="vis_all" class="px-3 py-1 rounded text-sm bg-gray-200">All</button>
+          <button onclick="setAnswerVisibility('active_team')" id="vis_active" class="px-3 py-1 rounded text-sm bg-gray-200">Active Team</button>
+          <button onclick="setAnswerVisibility('waiting_team')" id="vis_waiting" class="px-3 py-1 rounded text-sm bg-gray-200">Waiting Team</button>
+          <button onclick="setAnswerVisibility('excluded')" id="vis_excluded" class="px-3 py-1 rounded text-sm bg-gray-200">Excluded Player</button>
+          <button onclick="showAnswers()" class="px-4 py-1 rounded text-sm text-white ml-auto" style="background-color: #1EA7D8;">📖 Read Answers</button>
+        </div>
+
+        <div id="answersList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
     </div>
   </div>
 
@@ -109,12 +162,183 @@
     window.currentPlayerId = null;
     window.currentPlayerName = null;
 
-    // Word lists
+    // Canvas setup
+    let canvas, ctx;
+    let drawing = false;
+    let currentTool = 'pen';
+    let currentColor = '#000000';
+    let brushSize = 3;
+    let timerInterval = null;
+    let selectedTimer = 60;
+    let timeRemaining = 0;
+
     window.WORDS = {
       nouns: ['elephant', 'mountain', 'symphony', 'laboratory', 'adventure', 'telescope', 'cathedral', 'volcano', 'library', 'hurricane', 'galaxy', 'fortress', 'ocean', 'pyramid', 'metropolis', 'compass', 'desert', 'waterfall', 'monastery', 'carnival', 'labyrinth', 'meadow', 'archipelago', 'castle', 'valley', 'aurora', 'canyon', 'jungle', 'peninsula', 'sanctuary', 'butterfly', 'dragon', 'unicorn', 'phoenix', 'lighthouse', 'glacier', 'earthquake', 'tornado', 'avalanche', 'eclipse', 'comet', 'nebula', 'asteroid', 'satellite', 'rocket', 'submarine', 'helicopter', 'parachute', 'microscope', 'binoculars'],
       adjectives: ['magnificent', 'peculiar', 'tremendous', 'delicate', 'mysterious', 'brilliant', 'ancient', 'graceful', 'turbulent', 'serene', 'spectacular', 'elegant', 'ferocious', 'luminous', 'tranquil', 'vibrant', 'majestic', 'bizarre', 'harmonious', 'resilient', 'exquisite', 'radiant', 'enigmatic', 'colossal', 'whimsical', 'pristine', 'formidable', 'ethereal', 'splendid', 'dazzling', 'gleaming', 'shimmering', 'sparkling', 'glittering', 'blazing', 'glowing', 'flickering', 'twinkling', 'shining', 'vivid', 'bold', 'striking', 'dramatic', 'intense', 'powerful', 'mighty', 'strong', 'robust', 'sturdy', 'solid'],
       fancyWords: ['obsequious', 'perspicacious', 'recalcitrant', 'ephemeral', 'ubiquitous', 'vociferous', 'pulchritude', 'quintessential', 'serendipity', 'lackadaisical', 'magnanimous', 'nefarious', 'obfuscate', 'perfidious', 'pusillanimous', 'querulous', 'sagacious', 'sanguine', 'taciturn', 'unctuous', 'verbose', 'zealous'],
       famousPeople: ['Marilyn Monroe', 'Albert Einstein', 'Leonardo da Vinci', 'Iron Man', 'Batman', 'Superman', 'Harry Potter', 'Hermione Granger', 'Luke Skywalker', 'Darth Vader', 'Sherlock Holmes', 'James Bond', 'Spider-Man', 'Wonder Woman', 'Captain America', 'Thor', 'Hulk', 'Black Widow', 'Jon Snow', 'Daenerys Targaryen']
+    };
+
+    function initCanvas() {
+      canvas = document.getElementById('canvas');
+      ctx = canvas.getContext('2d');
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseout', stopDrawing);
+
+      canvas.addEventListener('touchstart', handleTouch);
+      canvas.addEventListener('touchmove', handleTouch);
+      canvas.addEventListener('touchend', stopDrawing);
+
+      document.getElementById('colorPicker').addEventListener('change', (e) => {
+        currentColor = e.target.value;
+      });
+
+      document.getElementById('brushSize').addEventListener('input', (e) => {
+        brushSize = e.target.value;
+      });
+    }
+
+    function startDrawing(e) {
+      drawing = true;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    function draw(e) {
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      ctx.lineWidth = brushSize;
+      ctx.strokeStyle = currentTool === 'eraser' ? '#ffffff' : currentColor;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    function stopDrawing() {
+      drawing = false;
+    }
+
+    function handleTouch(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      canvas.dispatchEvent(mouseEvent);
+    }
+
+    window.setTool = function(tool) {
+      currentTool = tool;
+      document.getElementById('tool_pen').style.backgroundColor = tool === 'pen' ? '#5E5394' : '#E5E7EB';
+      document.getElementById('tool_pen').style.color = tool === 'pen' ? '#fff' : '#000';
+      document.getElementById('tool_eraser').style.backgroundColor = tool === 'eraser' ? '#5E5394' : '#E5E7EB';
+      document.getElementById('tool_eraser').style.color = tool === 'eraser' ? '#fff' : '#000';
+    };
+
+    window.clearCanvas = function() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    window.setTimer = function(seconds) {
+      selectedTimer = seconds;
+      [30, 60, 90, 120].forEach(s => {
+        const btn = document.getElementById(`timer${s}`);
+        btn.style.backgroundColor = s === seconds ? '#5E5394' : '#E5E7EB';
+        btn.style.color = s === seconds ? '#fff' : '#000';
+      });
+    };
+
+    window.startTimer = function() {
+      if (timerInterval) clearInterval(timerInterval);
+      timeRemaining = selectedTimer;
+      document.getElementById('timerDisplay').textContent = timeRemaining + 's';
+      
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        document.getElementById('timerDisplay').textContent = timeRemaining + 's';
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          document.getElementById('timerDisplay').textContent = 'TIME!';
+        }
+      }, 1000);
+    };
+
+    window.submitAnswer = async function() {
+      const imageData = canvas.toDataURL();
+      
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        const submissions = data.submissions || {};
+        submissions[window.currentPlayerId] = {
+          playerId: window.currentPlayerId,
+          playerName: window.currentPlayerName,
+          answer: imageData,
+          timestamp: Date.now()
+        };
+        
+        await update(ref(db, `rooms/${window.roomCode}`), { submissions });
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').textContent = '✓ Submitted';
+      }, { onlyOnce: true });
+    };
+
+    window.setAnswerVisibility = function(vis) {
+      ['all', 'active_team', 'waiting_team', 'excluded'].forEach(v => {
+        const btn = document.getElementById(`vis_${v}`);
+        btn.style.backgroundColor = v === vis ? '#5E5394' : '#E5E7EB';
+        btn.style.color = v === vis ? '#fff' : '#000';
+      });
+      window.currentAnswerVisibility = vis;
+    };
+
+    window.showAnswers = function() {
+      onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
+        const data = snap.val();
+        if (!data.submissions) return;
+        
+        const submissions = Object.values(data.submissions);
+        const shuffled = submissions.sort(() => Math.random() - 0.5);
+        
+        let filtered = shuffled;
+        const vis = window.currentAnswerVisibility || 'all';
+        
+        if (vis !== 'all') {
+          filtered = shuffled.filter(sub => {
+            const player = data.players.find(p => p.id === sub.playerId);
+            if (!player) return false;
+            
+            if (vis === 'excluded') {
+              return player.id === data.excludedPlayer;
+            } else if (vis === 'active_team') {
+              const teamASees = data.round % 2 === 1;
+              return (player.team === 'A' && teamASees) || (player.team === 'B' && !teamASees);
+            } else if (vis === 'waiting_team') {
+              const teamASees = data.round % 2 === 1;
+              return (player.team === 'A' && !teamASees) || (player.team === 'B' && teamASees);
+            }
+            return true;
+          });
+        }
+        
+        const container = document.getElementById('answersList');
+        container.innerHTML = filtered.map(sub => `
+          <div class="bg-white rounded-lg p-3 shadow">
+            <img src="${sub.answer}" class="w-full rounded mb-2">
+            <p class="text-sm text-center text-gray-600 font-medium">${sub.playerName}</p>
+          </div>
+        `).join('');
+      }, { onlyOnce: true });
     };
 
     window.createRoom = async function() {
@@ -139,7 +363,9 @@
         round: 0,
         excludedPlayer: null,
         wordCategories: { nouns: true, adjectives: true, famousPeople: false, fancyWords: false },
-        showDefinitions: {}
+        showDefinitions: {},
+        submissions: {},
+        answerVisibility: 'all'
       });
       
       window.roomCode = code;
@@ -147,6 +373,7 @@
       document.getElementById('gameRoom').classList.remove('hidden');
       document.getElementById('roomCodeDisplay').textContent = code;
       document.getElementById('currentPlayerName').textContent = name;
+      initCanvas();
       listenToRoom(code);
     };
 
@@ -178,6 +405,7 @@
         document.getElementById('gameRoom').classList.remove('hidden');
         document.getElementById('roomCodeDisplay').textContent = code;
         document.getElementById('currentPlayerName').textContent = name;
+        initCanvas();
         listenToRoom(code);
       }, { onlyOnce: true });
     };
@@ -190,29 +418,28 @@
     }
 
     function updateUI(data) {
-      // Update player count
       document.getElementById('playerCount').textContent = data.players ? data.players.length : 0;
       
-      // Update players list
       const list = document.getElementById('playersList');
       list.innerHTML = '';
       if (data.players && data.players.length > 0) {
         data.players.forEach(p => {
           const div = document.createElement('div');
           const isCurrentPlayer = p.id === window.currentPlayerId;
-          div.className = `flex items-center gap-2 p-2 rounded ${isCurrentPlayer ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'}`;
+          div.className = `flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded ${isCurrentPlayer ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'}`;
           div.innerHTML = `
-            <span class="flex-1 font-medium">${p.name}${isCurrentPlayer ? ' (You)' : ''}</span>
-            <button onclick="setTeam(${p.id}, 'A')" class="px-3 py-1 rounded text-white" style="background-color: ${p.team === 'A' ? '#5E5394' : '#E5E7EB'}; color: ${p.team === 'A' ? '#fff' : '#000'}">Team A</button>
-            <button onclick="setTeam(${p.id}, 'B')" class="px-3 py-1 rounded text-white" style="background-color: ${p.team === 'B' ? '#E85987' : '#E5E7EB'}; color: ${p.team === 'B' ? '#fff' : '#000'}">Team B</button>
-            <button onclick="setTeam(${p.id}, null)" class="px-3 py-1 rounded ${p.team === null ? 'bg-gray-400 text-white' : 'bg-gray-200'}">None</button>
-            <button onclick="removePlayer(${p.id})" class="px-3 py-1 bg-red-500 text-white rounded">Remove</button>
+            <span class="flex-1 font-medium text-sm">${p.name}${isCurrentPlayer ? ' (You)' : ''}</span>
+            <div class="flex gap-1">
+              <button onclick="setTeam(${p.id}, 'A')" class="flex-1 sm:flex-none px-2 py-1 rounded text-white text-xs" style="background-color: ${p.team === 'A' ? '#5E5394' : '#E5E7EB'}; color: ${p.team === 'A' ? '#fff' : '#000'}">Team A</button>
+              <button onclick="setTeam(${p.id}, 'B')" class="flex-1 sm:flex-none px-2 py-1 rounded text-white text-xs" style="background-color: ${p.team === 'B' ? '#E85987' : '#E5E7EB'}; color: ${p.team === 'B' ? '#fff' : '#000'}">Team B</button>
+              <button onclick="setTeam(${p.id}, null)" class="flex-1 sm:flex-none px-2 py-1 rounded text-xs ${p.team === null ? 'bg-gray-400 text-white' : 'bg-gray-200'}">None</button>
+              <button onclick="removePlayer(${p.id})" class="flex-1 sm:flex-none px-2 py-1 bg-red-500 text-white rounded text-xs">Remove</button>
+            </div>
           `;
           list.appendChild(div);
         });
       }
       
-      // Update game mode buttons
       ['all_see', 'team_alternate', 'random_player'].forEach(mode => {
         const btn = document.getElementById(`mode_${mode}`);
         if (data.gameMode === mode) {
@@ -224,7 +451,6 @@
         }
       });
       
-      // Update category checkboxes
       if (data.wordCategories) {
         document.getElementById('cat_nouns').checked = data.wordCategories.nouns;
         document.getElementById('cat_adjectives').checked = data.wordCategories.adjectives;
@@ -232,8 +458,37 @@
         document.getElementById('cat_famous').checked = data.wordCategories.famousPeople;
       }
       
-      // Display player cards with words
       displayPlayerCards(data);
+      updateSubmissionStatus(data);
+    }
+
+    function updateSubmissionStatus(data) {
+      if (!data.currentWord) {
+        document.getElementById('answerSection').classList.add('hidden');
+        document.getElementById('answersSection').classList.add('hidden');
+        return;
+      }
+      
+      document.getElementById('answerSection').classList.remove('hidden');
+      
+      const submissions = data.submissions || {};
+      const submittedCount = Object.keys(submissions).length;
+      const totalPlayers = data.players ? data.players.length : 0;
+      
+      document.getElementById('submittedCount').textContent = submittedCount;
+      document.getElementById('totalPlayers').textContent = totalPlayers;
+      
+      if (submissions[window.currentPlayerId]) {
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').textContent = '✓ Submitted';
+      } else {
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = 'Submit Answer';
+      }
+      
+      if (submittedCount > 0 && submittedCount === totalPlayers) {
+        document.getElementById('answersSection').classList.remove('hidden');
+      }
     }
 
     function displayPlayerCards(data) {
@@ -289,10 +544,10 @@
           <h4 class="font-semibold text-lg mb-3">${player.name}</h4>
           ${canSee ? `
             <div class="rounded-lg p-4 mb-3" style="background-color: #E8F4D0;">
-              <p class="text-2xl font-bold text-center" style="color: #5E5394;">${data.currentWord}</p>
+              <p class="text-xl md:text-2xl font-bold text-center break-words" style="color: #5E5394;">${data.currentWord}</p>
             </div>
-            <button onclick="toggleDef(${player.id})" class="w-full px-4 py-2 text-white rounded-lg mb-2" style="background-color: #E85987;">${showDef ? 'Hide' : 'Show'} Info</button>
-            ${showDef ? `<a href="${defUrl}" target="_blank" class="block w-full px-4 py-2 text-center text-white rounded-lg" style="background-color: #5E5394;">View Definition</a>` : ''}
+            <button onclick="toggleDef(${player.id})" class="w-full px-4 py-2 text-white rounded-lg mb-2 text-sm" style="background-color: #E85987;">${showDef ? 'Hide' : 'Show'} Info</button>
+            ${showDef ? `<a href="${defUrl}" target="_blank" class="block w-full px-4 py-2 text-center text-white rounded-lg text-sm" style="background-color: #5E5394;">View Definition</a>` : ''}
           ` : `
             <div class="bg-gray-200 rounded-lg p-4 text-center">
               <p class="text-gray-500 font-medium">Word Hidden</p>
@@ -304,19 +559,15 @@
 
     function canPlayerSeeWord(player, data) {
       if (!data.currentWord) return false;
-      
       if (data.gameMode === 'all_see') return true;
-      
       if (data.gameMode === 'team_alternate') {
         if (!player.team) return true;
         const teamASees = data.round % 2 === 1;
         return (player.team === 'A' && teamASees) || (player.team === 'B' && !teamASees);
       }
-      
       if (data.gameMode === 'random_player') {
         return player.id !== data.excludedPlayer;
       }
-      
       return false;
     }
 
@@ -377,7 +628,8 @@
           currentWord: item.word,
           currentWordType: item.type,
           round: (data.round || 0) + 1,
-          showDefinitions: {}
+          showDefinitions: {},
+          submissions: {}
         };
         
         if (data.gameMode === 'random_player' && data.players && data.players.length > 0) {
@@ -385,6 +637,9 @@
         }
         
         await update(ref(db, `rooms/${window.roomCode}`), updates);
+        clearCanvas();
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = 'Submit Answer';
       }, { onlyOnce: true });
     };
 
@@ -399,7 +654,6 @@
 
     window.leaveRoom = async function() {
       if (window.currentPlayerId && window.roomCode) {
-        // Remove current player from the room
         onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
           const data = snap.val();
           if (data && data.players) {
@@ -409,6 +663,7 @@
         }, { onlyOnce: true });
       }
       
+      if (timerInterval) clearInterval(timerInterval);
       window.roomCode = null;
       window.currentPlayerId = null;
       window.currentPlayerName = null;
