@@ -4,10 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Word Randomizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .hidden { display: none !important; }
-    body { margin: 0; padding: 0; }
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Montserrat', sans-serif;
+    }
     #canvas { 
       touch-action: none; 
       cursor: crosshair;
@@ -69,7 +76,7 @@
           <button onclick="setGameMode('only_1_player')" id="mode_only_1_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Only 1 Sees</button>
         </div>
         
-        <div id="adminSettings" class="hidden mb-4 p-3 rounded-lg" style="background-color: #E8F4D0;">
+        <div id="adminSettings" class="hidden mb-4 p-3 rounded-lg" style="background-color: #fefcea;">
           <h4 class="font-semibold text-sm mb-2">⚙️ Admin Settings</h4>
           <div class="space-y-2">
             <label class="flex items-center gap-2 cursor-pointer">
@@ -79,6 +86,10 @@
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="autoStartTimer" onclick="toggleAutoStartTimer()" class="w-4 h-4" checked>
               <span class="text-sm">Auto-start timer (10s after word reveal)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="forceTextMode" onclick="toggleForceTextMode()" class="w-4 h-4">
+              <span class="text-sm">Force text mode (disable drawing)</span>
             </label>
             <div class="flex flex-wrap gap-2 items-center">
               <span class="text-sm font-medium">Default timer:</span>
@@ -330,19 +341,28 @@
     };
 
     window.setAnswerMode = function(mode) {
-      answerMode = mode;
-      document.getElementById('mode_draw').style.backgroundColor = mode === 'draw' ? '#5E5394' : '#E5E7EB';
-      document.getElementById('mode_draw').style.color = mode === 'draw' ? '#fff' : '#000';
-      document.getElementById('mode_text').style.backgroundColor = mode === 'text' ? '#5E5394' : '#E5E7EB';
-      document.getElementById('mode_text').style.color = mode === 'text' ? '#fff' : '#000';
-      
-      if (mode === 'draw') {
-        document.getElementById('drawMode').classList.remove('hidden');
-        document.getElementById('textMode').classList.add('hidden');
-      } else {
-        document.getElementById('drawMode').classList.add('hidden');
-        document.getElementById('textMode').classList.remove('hidden');
-      }
+      // Check if forced text mode is enabled
+      onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
+        const data = snap.val();
+        if (data && data.forceTextMode && mode === 'draw') {
+          alert('Drawing mode is disabled by the admin');
+          return;
+        }
+        
+        answerMode = mode;
+        document.getElementById('mode_draw').style.backgroundColor = mode === 'draw' ? '#5E5394' : '#E5E7EB';
+        document.getElementById('mode_draw').style.color = mode === 'draw' ? '#fff' : '#000';
+        document.getElementById('mode_text').style.backgroundColor = mode === 'text' ? '#5E5394' : '#E5E7EB';
+        document.getElementById('mode_text').style.color = mode === 'text' ? '#fff' : '#000';
+        
+        if (mode === 'draw') {
+          document.getElementById('drawMode').classList.remove('hidden');
+          document.getElementById('textMode').classList.add('hidden');
+        } else {
+          document.getElementById('drawMode').classList.add('hidden');
+          document.getElementById('textMode').classList.remove('hidden');
+        }
+      }, { onlyOnce: true });
     };
 
     window.setTimer = function(seconds) {
@@ -350,17 +370,26 @@
     };
 
     window.setDefaultTimer = async function(seconds) {
+      if (window.currentPlayerId !== window.roomAdminId) return;
       await update(ref(db, `rooms/${window.roomCode}`), { defaultTimer: seconds });
     };
 
     window.toggleAnonymousMode = async function() {
+      if (window.currentPlayerId !== window.roomAdminId) return;
       const checked = document.getElementById('forceAnonymous').checked;
       await update(ref(db, `rooms/${window.roomCode}`), { forceAnonymous: checked });
     };
 
     window.toggleAutoStartTimer = async function() {
+      if (window.currentPlayerId !== window.roomAdminId) return;
       const checked = document.getElementById('autoStartTimer').checked;
       await update(ref(db, `rooms/${window.roomCode}`), { autoStartTimer: checked });
+    };
+
+    window.toggleForceTextMode = async function() {
+      if (window.currentPlayerId !== window.roomAdminId) return;
+      const checked = document.getElementById('forceTextMode').checked;
+      await update(ref(db, `rooms/${window.roomCode}`), { forceTextMode: checked });
     };
 
     window.startTimer = function() {
@@ -574,6 +603,7 @@
         answerVisibility: 'all',
         forceAnonymous: false,
         autoStartTimer: true,
+        forceTextMode: false,
         defaultTimer: 60,
         bets: {},
         bettingMode: false,
@@ -641,7 +671,8 @@
         adminPanel.classList.remove('hidden');
         // Update admin settings
         document.getElementById('forceAnonymous').checked = data.forceAnonymous || false;
-        document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false; // Default to true
+        document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false;
+        document.getElementById('forceTextMode').checked = data.forceTextMode || false;
         const defaultTimer = data.defaultTimer || 60;
         [30, 60, 90, 120].forEach(s => {
           const btn = document.getElementById(`default_timer${s}`);
@@ -657,6 +688,19 @@
       // Set timer based on default
       if (data.defaultTimer) {
         selectedTimer = data.defaultTimer;
+      }
+      
+      // Update answer mode controls visibility
+      if (data.forceTextMode) {
+        document.getElementById('mode_draw').style.opacity = '0.5';
+        document.getElementById('mode_draw').style.cursor = 'not-allowed';
+        // Force text mode
+        if (answerMode === 'draw') {
+          setAnswerMode('text');
+        }
+      } else {
+        document.getElementById('mode_draw').style.opacity = '1';
+        document.getElementById('mode_draw').style.cursor = 'pointer';
       }
       
       const list = document.getElementById('playersList');
@@ -689,6 +733,7 @@
         document.getElementById('adminScoreControls').classList.add('hidden');
       }
       
+      // Update game mode buttons - disable for non-admin
       ['all_see', 'team_alternate', 'random_player', 'only_1_player'].forEach(mode => {
         const btn = document.getElementById(`mode_${mode}`);
         if (data.gameMode === mode) {
@@ -698,13 +743,34 @@
           btn.style.backgroundColor = '#E8F4D0';
           btn.style.color = '#000';
         }
+        
+        // Disable for non-admin
+        if (!isAdmin) {
+          btn.style.opacity = '0.5';
+          btn.style.cursor = 'not-allowed';
+          btn.onclick = null;
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
       });
       
+      // Update category checkboxes - disable for non-admin
       if (data.wordCategories) {
-        document.getElementById('cat_nouns').checked = data.wordCategories.nouns;
-        document.getElementById('cat_adjectives').checked = data.wordCategories.adjectives;
-        document.getElementById('cat_fancy').checked = data.wordCategories.fancyWords;
-        document.getElementById('cat_famous').checked = data.wordCategories.famousPeople;
+        ['nouns', 'adjectives', 'fancyWords', 'famousPeople'].forEach(cat => {
+          const checkbox = document.getElementById(`cat_${cat === 'fancyWords' ? 'fancy' : cat === 'famousPeople' ? 'famous' : cat}`);
+          if (checkbox) {
+            checkbox.checked = data.wordCategories[cat];
+            checkbox.disabled = !isAdmin;
+            if (!isAdmin) {
+              checkbox.parentElement.style.opacity = '0.7';
+              checkbox.parentElement.style.cursor = 'not-allowed';
+            } else {
+              checkbox.parentElement.style.opacity = '1';
+              checkbox.parentElement.style.cursor = 'pointer';
+            }
+          }
+        });
       }
       
       displayPlayerCards(data);
@@ -965,37 +1031,18 @@
         return;
       }
       
-      const teamA = data.players.filter(p => p.team === 'A');
-      const teamB = data.players.filter(p => p.team === 'B');
-      const noTeam = data.players.filter(p => !p.team);
-      
-      let html = '';
-      
-      if (noTeam.length > 0) {
-        html += '<h3 class="text-lg font-semibold mb-2 text-gray-700">No Team</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">';
-        noTeam.forEach(p => html += createPlayerCard(p, data, null));
-        html += '</div>';
+      // Find current player
+      const currentPlayer = data.players.find(p => p.id === window.currentPlayerId);
+      if (!currentPlayer) {
+        container.innerHTML = '';
+        return;
       }
       
-      if (teamA.length > 0) {
-        html += '<h3 class="text-lg font-semibold mb-2" style="color: #5E5394;">Team A</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">';
-        teamA.forEach(p => html += createPlayerCard(p, data, 'A'));
-        html += '</div>';
-      }
-      
-      if (teamB.length > 0) {
-        html += '<h3 class="text-lg font-semibold mb-2" style="color: #E85987;">Team B</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">';
-        teamB.forEach(p => html += createPlayerCard(p, data, 'B'));
-        html += '</div>';
-      }
-      
-      container.innerHTML = html;
-    }
-
-    function createPlayerCard(player, data, team) {
-      const canSee = canPlayerSeeWord(player, data);
+      // Only show the current player's own card
+      const canSee = canPlayerSeeWord(currentPlayer, data);
+      const team = currentPlayer.team;
       const borderColor = team === 'A' ? '#5E5394' : team === 'B' ? '#E85987' : '#D1D5DB';
-      const showDef = data.showDefinitions && data.showDefinitions[player.id];
+      const showDef = data.showDefinitions && data.showDefinitions[currentPlayer.id];
       
       let defUrl = '#';
       if (data.currentWordType === 'person') {
@@ -1006,22 +1053,25 @@
         defUrl = `https://www.dictionary.com/browse/${data.currentWord.toLowerCase()}`;
       }
       
-      return `
-        <div class="rounded-lg shadow-md p-4 border-2" style="background-color: #F5E6D3; border-color: ${borderColor};">
-          <h4 class="font-semibold text-lg mb-3">${player.name}</h4>
+      const cardHtml = `
+        <div class="rounded-lg shadow-md p-4 border-2 max-w-md mx-auto" style="background-color: #F5E6D3; border-color: ${borderColor};">
+          <h4 class="font-semibold text-lg mb-3">Your Word</h4>
           ${canSee ? `
             <div class="rounded-lg p-4 mb-3" style="background-color: #E8F4D0;">
               <p class="text-xl md:text-2xl font-bold text-center break-words" style="color: #5E5394;">${data.currentWord}</p>
             </div>
-            <button onclick="toggleDef(${player.id})" class="w-full px-4 py-2 text-white rounded-lg mb-2 text-sm" style="background-color: #E85987;">${showDef ? 'Hide' : 'Show'} Info</button>
+            <button onclick="toggleDef(${currentPlayer.id})" class="w-full px-4 py-2 text-white rounded-lg mb-2 text-sm" style="background-color: #E85987;">${showDef ? 'Hide' : 'Show'} Info</button>
             ${showDef ? `<a href="${defUrl}" target="_blank" class="block w-full px-4 py-2 text-center text-white rounded-lg text-sm" style="background-color: #5E5394;">View Definition</a>` : ''}
           ` : `
             <div class="bg-gray-200 rounded-lg p-4 text-center">
               <p class="text-gray-500 font-medium">Word Hidden</p>
+              <p class="text-xs text-gray-400 mt-2">You don't see the word this round</p>
             </div>
           `}
         </div>
       `;
+      
+      container.innerHTML = cardHtml;
     }
 
     function canPlayerSeeWord(player, data) {
@@ -1070,10 +1120,12 @@
     };
 
     window.setGameMode = async function(mode) {
+      if (window.currentPlayerId !== window.roomAdminId) return;
       await update(ref(db, `rooms/${window.roomCode}`), { gameMode: mode });
     };
 
     window.toggleCategory = async function(cat) {
+      if (window.currentPlayerId !== window.roomAdminId) return;
       onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
         const data = snap.val();
         const cats = data.wordCategories || {};
