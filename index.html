@@ -63,18 +63,22 @@
       <div class="rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
         <h3 class="font-semibold mb-2">Game Mode:</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg text-sm">Everyone Sees</button>
-          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg text-sm">Team Alternating</button>
-          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg text-sm">Random Excluded</button>
-          <button onclick="setGameMode('only_1_player')" id="mode_only_1_player" class="px-4 py-2 rounded-lg text-sm">Only 1 Sees</button>
+          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Everyone Sees</button>
+          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Team Alternating</button>
+          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Random Excluded</button>
+          <button onclick="setGameMode('only_1_player')" id="mode_only_1_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Only 1 Sees</button>
         </div>
         
-        <div id="adminSettings" class="hidden mb-4 p-3 rounded-lg bg-yellow-50">
+        <div id="adminSettings" class="hidden mb-4 p-3 rounded-lg" style="background-color: #E8F4D0;">
           <h4 class="font-semibold text-sm mb-2">⚙️ Admin Settings</h4>
           <div class="space-y-2">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" id="forceAnonymous" onclick="toggleAnonymousMode()" class="w-4 h-4">
               <span class="text-sm">Force anonymous submissions</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="autoStartTimer" onclick="toggleAutoStartTimer()" class="w-4 h-4" checked>
+              <span class="text-sm">Auto-start timer (10s after word reveal)</span>
             </label>
             <div class="flex flex-wrap gap-2 items-center">
               <span class="text-sm font-medium">Default timer:</span>
@@ -85,7 +89,7 @@
             </div>
             <div class="flex gap-2 items-center pt-2">
               <button onclick="toggleTimer()" id="timerControlBtn" class="px-4 py-2 rounded text-sm text-white" style="background-color: #1EA7D8;">Start Timer</button>
-              <button onclick="placeBets()" id="placeBetsBtn" class="px-4 py-2 rounded text-sm text-white" style="background-color: #E85987;">Place Bets!</button>
+              <button onclick="placeBets()" id="placeBetsBtn" class="px-4 py-2 rounded text-sm text-white hidden" style="background-color: #E85987;">Place Bets!</button>
             </div>
           </div>
         </div>
@@ -153,43 +157,33 @@
         </div>
       </div>
 
-      <!-- Answer Display Section -->
-      <div id="answersSection" class="hidden rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
-        <h3 class="font-semibold mb-3">Submitted Answers</h3>
-        
-        <div class="mb-4 flex flex-wrap gap-2">
-          <span class="text-sm font-medium">Show to:</span>
-          <button onclick="setAnswerVisibility('all')" id="vis_all" class="px-3 py-1 rounded text-sm bg-gray-200">All</button>
-          <button onclick="setAnswerVisibility('active_team')" id="vis_active" class="px-3 py-1 rounded text-sm bg-gray-200">Active Team</button>
-          <button onclick="setAnswerVisibility('waiting_team')" id="vis_waiting" class="px-3 py-1 rounded text-sm bg-gray-200">Waiting Team</button>
-          <button onclick="setAnswerVisibility('excluded')" id="vis_excluded" class="px-3 py-1 rounded text-sm bg-gray-200">Excluded Player</button>
-          <button onclick="showAnswers()" class="px-4 py-1 rounded text-sm text-white ml-auto" style="background-color: #1EA7D8;">📖 Read Answers</button>
-        </div>
-
-        <div id="answersList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-      </div>
-
       <!-- Betting Section -->
       <div id="bettingSection" class="hidden rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
-        <h3 class="font-semibold mb-3">Place Your Bet!</h3>
+        <h3 class="font-semibold mb-3">Review & Place Your Bet!</h3>
         <p class="text-sm text-gray-600 mb-4">Navigate through answers and select which one you think matches the word best.</p>
         
-        <div class="mb-4 flex justify-between items-center">
-          <button onclick="prevAnswer()" class="px-4 py-2 rounded text-white" style="background-color: #5E5394;">← Previous</button>
-          <span class="font-semibold">Answer <span id="currentAnswerIndex">1</span> of <span id="totalAnswers">0</span></span>
-          <button onclick="nextAnswer()" class="px-4 py-2 rounded text-white" style="background-color: #5E5394;">Next →</button>
+        <div id="readAnswersBtn" class="mb-4">
+          <button onclick="startReading()" class="w-full px-6 py-3 text-white rounded-lg font-semibold text-lg" style="background-color: #5E5394;">📖 Start Reading Answers</button>
         </div>
 
-        <div id="currentAnswerDisplay" class="bg-white rounded-lg p-6 mb-4 min-h-[300px] flex items-center justify-center"></div>
+        <div id="navigationControls" class="hidden">
+          <div class="mb-4 flex justify-between items-center">
+            <button onclick="prevAnswer()" class="px-4 py-2 rounded text-white" style="background-color: #5E5394;">← Previous</button>
+            <span class="font-semibold">Answer <span id="currentAnswerIndex">1</span> of <span id="totalAnswers">0</span></span>
+            <button onclick="nextAnswer()" class="px-4 py-2 rounded text-white" style="background-color: #5E5394;">Next →</button>
+          </div>
 
-        <button onclick="selectAnswer()" id="selectAnswerBtn" class="w-full px-6 py-3 text-white rounded-lg font-semibold text-lg" style="background-color: #E85987;">This One!</button>
-        
-        <div id="betStatus" class="hidden mt-4 p-3 bg-green-100 rounded-lg text-center">
-          <p class="font-semibold text-green-800">✓ Bet Placed!</p>
-        </div>
+          <div id="currentAnswerDisplay" class="bg-white rounded-lg p-6 mb-4 min-h-[300px] flex items-center justify-center"></div>
 
-        <div id="adminBettingControls" class="hidden mt-4">
-          <button onclick="showResultsManual()" class="w-full px-6 py-3 text-white rounded-lg font-semibold" style="background-color: #11462b;">Show Results Now</button>
+          <button onclick="selectAnswer()" id="selectAnswerBtn" class="w-full px-6 py-3 text-white rounded-lg font-semibold text-lg" style="background-color: #E85987;">This One!</button>
+          
+          <div id="betStatus" class="hidden mt-4 p-3 bg-green-100 rounded-lg text-center">
+            <p class="font-semibold text-green-800">✓ Bet Placed!</p>
+          </div>
+
+          <div id="adminBettingControls" class="hidden mt-4">
+            <button onclick="showResultsManual()" class="w-full px-6 py-3 text-white rounded-lg font-semibold" style="background-color: #11462b;">Show Results Now</button>
+          </div>
         </div>
       </div>
 
@@ -364,6 +358,11 @@
       await update(ref(db, `rooms/${window.roomCode}`), { forceAnonymous: checked });
     };
 
+    window.toggleAutoStartTimer = async function() {
+      const checked = document.getElementById('autoStartTimer').checked;
+      await update(ref(db, `rooms/${window.roomCode}`), { autoStartTimer: checked });
+    };
+
     window.startTimer = function() {
       if (timerInterval) clearInterval(timerInterval);
       timeRemaining = selectedTimer;
@@ -418,14 +417,17 @@
         await update(ref(db, `rooms/${window.roomCode}`), { 
           bettingMode: true,
           bets: {},
-          showResults: false
+          showResults: false,
+          readingStarted: false
         });
         
-        // Start 30 second timer for betting
+        // Stop any running timer
         stopTimer();
-        selectedTimer = 30;
-        startTimer();
       }, { onlyOnce: true });
+    };
+
+    window.startReading = async function() {
+      await update(ref(db, `rooms/${window.roomCode}`), { readingStarted: true });
     };
 
     window.prevAnswer = function() {
@@ -501,9 +503,14 @@
     };
 
     // Auto-start timer when word is generated
-    window.autoStartTimer = function(defaultTime) {
+    window.autoStartTimer = function(defaultTime, autoStart) {
       selectedTimer = defaultTime || 60;
-      window.startTimer();
+      if (autoStart) {
+        // Wait 10 seconds before starting
+        setTimeout(() => {
+          window.startTimer();
+        }, 10000);
+      }
     };
 
     window.submitAnswer = async function() {
@@ -538,77 +545,6 @@
       }, { onlyOnce: true });
     };
 
-    window.setAnswerVisibility = function(vis) {
-      ['all', 'active_team', 'waiting_team', 'excluded'].forEach(v => {
-        const btn = document.getElementById(`vis_${v}`);
-        btn.style.backgroundColor = v === vis ? '#5E5394' : '#E5E7EB';
-        btn.style.color = v === vis ? '#fff' : '#000';
-      });
-      window.currentAnswerVisibility = vis;
-    };
-
-    window.showAnswers = function() {
-      onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
-        const data = snap.val();
-        if (!data.submissions) return;
-        
-        const submissions = Object.values(data.submissions);
-        const shuffled = submissions.sort(() => Math.random() - 0.5);
-        
-        let filtered = shuffled;
-        const vis = window.currentAnswerVisibility || 'all';
-        
-        if (vis !== 'all') {
-          filtered = shuffled.filter(sub => {
-            const player = data.players.find(p => p.id === sub.playerId);
-            if (!player) return false;
-            
-            if (vis === 'excluded') {
-              return player.id === data.excludedPlayer;
-            } else if (vis === 'active_team') {
-              const teamASees = data.round % 2 === 1;
-              return (player.team === 'A' && teamASees) || (player.team === 'B' && !teamASees);
-            } else if (vis === 'waiting_team') {
-              const teamASees = data.round % 2 === 1;
-              return (player.team === 'A' && !teamASees) || (player.team === 'B' && teamASees);
-            }
-            return true;
-          });
-        }
-        
-        const container = document.getElementById('answersList');
-        container.innerHTML = filtered.map((sub, idx) => {
-          const isText = sub.answerType === 'text';
-          const content = isText 
-            ? `<div class="bg-white rounded p-4 text-center text-xl font-medium break-words answer-content-${idx}">${sub.answer}</div>`
-            : `<img src="${sub.answer}" class="w-full rounded answer-content-${idx}">`;
-          
-          return `
-            <div class="bg-white rounded-lg p-3 shadow" id="answer_${idx}">
-              <div class="flex justify-end mb-2">
-                <button onclick="toggleAnswer(${idx})" class="px-2 py-1 text-xs rounded" style="background-color: #5E5394; color: white;">Hide</button>
-              </div>
-              ${content}
-            </div>
-          `;
-        }).join('');
-      }, { onlyOnce: true });
-    };
-
-    window.toggleAnswer = function(idx) {
-      const answerDiv = document.getElementById(`answer_${idx}`);
-      const content = answerDiv.querySelector(`.answer-content-${idx}`);
-      const btn = answerDiv.querySelector('button');
-      
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        btn.textContent = 'Hide';
-      } else {
-        content.style.display = 'none';
-        btn.textContent = 'Show';
-      }
-    };
-
     window.createRoom = async function() {
       const name = document.getElementById('createPlayerName').value.trim();
       const pwd = document.getElementById('createPassword').value;
@@ -637,10 +573,12 @@
         submissions: {},
         answerVisibility: 'all',
         forceAnonymous: false,
+        autoStartTimer: true,
         defaultTimer: 60,
         bets: {},
         bettingMode: false,
-        showResults: false
+        showResults: false,
+        readingStarted: false
       });
       
       window.roomCode = code;
@@ -703,6 +641,7 @@
         adminPanel.classList.remove('hidden');
         // Update admin settings
         document.getElementById('forceAnonymous').checked = data.forceAnonymous || false;
+        document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false; // Default to true
         const defaultTimer = data.defaultTimer || 60;
         [30, 60, 90, 120].forEach(s => {
           const btn = document.getElementById(`default_timer${s}`);
@@ -727,7 +666,7 @@
           const div = document.createElement('div');
           const isCurrentPlayer = p.id === window.currentPlayerId;
           const score = p.score || 0;
-          div.className = `flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded ${isCurrentPlayer ? 'bg-yellow-100 border-2 border-yellow-400' : 'bg-gray-50'}`;
+          div.className = `flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded ${isCurrentPlayer ? 'bg-blue-50 border-2 border-blue-300' : 'bg-gray-50'}`;
           div.innerHTML = `
             <span class="flex-1 font-medium text-sm">${p.name}${isCurrentPlayer ? ' (You)' : ''} <span class="ml-2 px-2 py-1 rounded text-xs" style="background-color: #E8F4D0;">Score: ${score}</span></span>
             <div class="flex gap-1">
@@ -750,7 +689,7 @@
         document.getElementById('adminScoreControls').classList.add('hidden');
       }
       
-      ['all_see', 'team_alternate', 'random_player'].forEach(mode => {
+      ['all_see', 'team_alternate', 'random_player', 'only_1_player'].forEach(mode => {
         const btn = document.getElementById(`mode_${mode}`);
         if (data.gameMode === mode) {
           btn.style.backgroundColor = '#29522d';
@@ -788,13 +727,22 @@
         bettingSection.classList.remove('hidden');
         resultsSection.classList.add('hidden');
         
-        // Prepare answers for betting
-        bettingAnswers = Object.values(data.submissions).sort(() => Math.random() - 0.5);
-        document.getElementById('totalAnswers').textContent = bettingAnswers.length;
-        
-        if (bettingAnswers.length > 0) {
-          currentBettingIndex = 0;
-          displayCurrentBettingAnswer();
+        // Show/hide reading controls based on readingStarted
+        if (data.readingStarted) {
+          document.getElementById('readAnswersBtn').classList.add('hidden');
+          document.getElementById('navigationControls').classList.remove('hidden');
+          
+          // Prepare answers for betting
+          bettingAnswers = Object.values(data.submissions).sort(() => Math.random() - 0.5);
+          document.getElementById('totalAnswers').textContent = bettingAnswers.length;
+          
+          if (bettingAnswers.length > 0) {
+            currentBettingIndex = 0;
+            displayCurrentBettingAnswer();
+          }
+        } else {
+          document.getElementById('readAnswersBtn').classList.remove('hidden');
+          document.getElementById('navigationControls').classList.add('hidden');
         }
         
         // Check if current player has already bet
@@ -970,7 +918,8 @@
           bets: {},
           bettingMode: false,
           showResults: false,
-          excludedPlayer: null
+          excludedPlayer: null,
+          readingStarted: false
         });
         
         window.pendingScoreChanges = {};
@@ -980,7 +929,6 @@
     function updateSubmissionStatus(data) {
       if (!data.currentWord) {
         document.getElementById('answerSection').classList.add('hidden');
-        document.getElementById('answersSection').classList.add('hidden');
         return;
       }
       
@@ -1001,8 +949,12 @@
         document.getElementById('submitBtn').textContent = 'Submit Answer';
       }
       
-      if (submittedCount > 0 && submittedCount === totalPlayers) {
-        document.getElementById('answersSection').classList.remove('hidden');
+      // Show Place Bets button for admin when all players have submitted
+      const isAdmin = window.currentPlayerId === data.adminId;
+      if (isAdmin && submittedCount > 0 && submittedCount === totalPlayers && !data.bettingMode) {
+        document.getElementById('placeBetsBtn').classList.remove('hidden');
+      } else {
+        document.getElementById('placeBetsBtn').classList.add('hidden');
       }
     }
 
@@ -1083,6 +1035,9 @@
       if (data.gameMode === 'random_player') {
         return player.id !== data.excludedPlayer;
       }
+      if (data.gameMode === 'only_1_player') {
+        return player.id === data.excludedPlayer;
+      }
       return false;
     }
 
@@ -1160,9 +1115,10 @@
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('submitBtn').textContent = 'Submit Answer';
         
-        // Auto-start timer with default time
+        // Auto-start timer with default time if enabled
         const defaultTimer = data.defaultTimer || 60;
-        autoStartTimer(defaultTimer);
+        const autoStart = data.autoStartTimer !== false; // Default to true
+        autoStartTimer(defaultTimer, autoStart);
       }, { onlyOnce: true });
     };
 
