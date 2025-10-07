@@ -110,13 +110,6 @@
               <button onclick="setDefaultTimer(90)" id="default_timer90" class="px-2 py-1 rounded text-xs bg-gray-200">90s</button>
               <button onclick="setDefaultTimer(120)" id="default_timer120" class="px-2 py-1 rounded text-xs bg-gray-200">120s</button>
             </div>
-            <div class="pt-2">
-              <label class="text-sm font-medium block mb-1">Landing Page Banner URL:</label>
-              <div class="flex gap-2">
-                <input type="text" id="bannerUrlInput" placeholder="https://example.com/banner.jpg" class="flex-1 px-3 py-2 border rounded text-sm">
-                <button onclick="updateBanner()" class="px-4 py-2 rounded text-sm text-white" style="background-color: #5E5394;">Set</button>
-              </div>
-            </div>
             <div class="flex gap-2 items-center pt-2">
               <button onclick="toggleTimer()" id="timerControlBtn" class="px-4 py-2 rounded text-sm text-white" style="background-color: #1EA7D8;">Start Timer</button>
               <button onclick="placeBets()" id="placeBetsBtn" class="px-4 py-2 rounded text-sm text-white hidden" style="background-color: #E85987;">Place Bets!</button>
@@ -444,13 +437,6 @@
       await update(ref(db, `rooms/${window.roomCode}`), { forceTextMode: checked });
     };
 
-    window.updateBanner = async function() {
-      if (window.currentPlayerId !== window.roomAdminId) return;
-      const bannerUrl = document.getElementById('bannerUrlInput').value.trim();
-      await update(ref(db, 'globalSettings'), { bannerUrl: bannerUrl });
-      alert('Banner updated! Refresh the lobby page to see changes.');
-    };
-
     window.toggleCollaborativeDrawing = async function() {
       if (window.currentPlayerId !== window.roomAdminId) return;
       const checked = document.getElementById('collaborativeDrawing').checked;
@@ -715,14 +701,20 @@
 
     window.joinRoom = async function() {
       const name = document.getElementById('joinPlayerName').value.trim();
-      const code = document.getElementById('joinRoomCode').value;
+      const code = document.getElementById('joinRoomCode').value.trim();
       const pwd = document.getElementById('joinPassword').value;
       
       if (!name) return alert('Enter your name');
       if (!code || !pwd) return alert('Enter code and password');
       
-      onValue(ref(db, `rooms/${code}`), async (snap) => {
-        const data = snap.val();
+      try {
+        const snapshot = await new Promise((resolve) => {
+          onValue(ref(db, `rooms/${code}`), (snap) => {
+            resolve(snap);
+          }, { onlyOnce: true });
+        });
+        
+        const data = snapshot.val();
         if (!data) return alert('Room not found');
         if (data.password !== pwd) return alert('Wrong password');
         
@@ -744,7 +736,10 @@
         document.getElementById('currentPlayerName').textContent = name;
         initCanvas();
         listenToRoom(code);
-      }, { onlyOnce: true });
+      } catch (error) {
+        console.error('Error joining room:', error);
+        alert('Error joining room. Please try again.');
+      }
     };
 
     function listenToRoom(code) {
@@ -767,12 +762,6 @@
         document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false;
         document.getElementById('forceTextMode').checked = data.forceTextMode || false;
         document.getElementById('collaborativeDrawing').checked = data.collaborativeDrawing || false;
-        
-        // Load current banner URL
-        onValue(ref(db, 'globalSettings/bannerUrl'), (snap) => {
-          const bannerUrl = snap.val();
-          document.getElementById('bannerUrlInput').value = bannerUrl || '';
-        }, { onlyOnce: true });
         
         const defaultTimer = data.defaultTimer || 60;
         [30, 60, 90, 120].forEach(s => {
