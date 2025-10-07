@@ -44,6 +44,14 @@
           <button onclick="joinRoom()" class="w-full px-6 py-3 text-white rounded-lg font-semibold hover:opacity-90" style="background-color: #E85987;">Join Room</button>
         </div>
       </div>
+
+      <!-- Banner Section -->
+      <div id="lobbyBanner" class="mt-8 rounded-lg overflow-hidden shadow-md">
+        <img id="bannerImage" src="" alt="Banner" class="w-full h-auto" style="display: none;">
+        <div id="bannerPlaceholder" class="w-full py-16 text-center rounded-lg" style="background-color: #E8F4D0;">
+          <p class="text-2xl font-semibold" style="color: #4E5987;">Your Banner Here</p>
+        </div>
+      </div>
     </div>
 
     <!-- Game Room -->
@@ -70,10 +78,10 @@
       <div class="rounded-lg shadow-md p-4 md:p-6 mb-6" style="background-color: #F5E6D3;">
         <h3 class="font-semibold mb-2">Game Mode:</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Everyone Sees</button>
-          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Team Alternating</button>
-          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Random Excluded</button>
-          <button onclick="setGameMode('only_1_player')" id="mode_only_1_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;">Only 1 Sees</button>
+          <button onclick="setGameMode('all_see')" id="mode_all_see" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;" title="Everyone can see the word">Everyone Sees</button>
+          <button onclick="setGameMode('team_alternate')" id="mode_team_alternate" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;" title="First Team A sees the word, then team B, then team A, etc.">Team Alternating</button>
+          <button onclick="setGameMode('random_player')" id="mode_random_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;" title="Everyone sees the word except one random player">Random Excluded</button>
+          <button onclick="setGameMode('only_1_player')" id="mode_only_1_player" class="px-4 py-2 rounded-lg text-sm" style="background-color: #E8F4D0;" title="Nobody sees the word except for one random player">Only 1 Sees</button>
         </div>
         
         <div id="adminSettings" class="hidden mb-4 p-3 rounded-lg" style="background-color: #fefcea;">
@@ -91,12 +99,23 @@
               <input type="checkbox" id="forceTextMode" onclick="toggleForceTextMode()" class="w-4 h-4">
               <span class="text-sm">Force text mode (disable drawing)</span>
             </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="collaborativeDrawing" onclick="toggleCollaborativeDrawing()" class="w-4 h-4">
+              <span class="text-sm">Collaborative drawing (alternating turns)</span>
+            </label>
             <div class="flex flex-wrap gap-2 items-center">
               <span class="text-sm font-medium">Default timer:</span>
               <button onclick="setDefaultTimer(30)" id="default_timer30" class="px-2 py-1 rounded text-xs bg-gray-200">30s</button>
               <button onclick="setDefaultTimer(60)" id="default_timer60" class="px-2 py-1 rounded text-xs bg-gray-200">60s</button>
               <button onclick="setDefaultTimer(90)" id="default_timer90" class="px-2 py-1 rounded text-xs bg-gray-200">90s</button>
               <button onclick="setDefaultTimer(120)" id="default_timer120" class="px-2 py-1 rounded text-xs bg-gray-200">120s</button>
+            </div>
+            <div class="pt-2">
+              <label class="text-sm font-medium block mb-1">Landing Page Banner URL:</label>
+              <div class="flex gap-2">
+                <input type="text" id="bannerUrlInput" placeholder="https://example.com/banner.jpg" class="flex-1 px-3 py-2 border rounded text-sm">
+                <button onclick="updateBanner()" class="px-4 py-2 rounded text-sm text-white" style="background-color: #5E5394;">Set</button>
+              </div>
             </div>
             <div class="flex gap-2 items-center pt-2">
               <button onclick="toggleTimer()" id="timerControlBtn" class="px-4 py-2 rounded text-sm text-white" style="background-color: #1EA7D8;">Start Timer</button>
@@ -141,6 +160,10 @@
           <button onclick="setAnswerMode('text')" id="mode_text" class="px-4 py-2 rounded text-sm bg-gray-200">✏️ Text</button>
           <span class="text-sm font-medium ml-auto">Timer:</span>
           <div id="timerDisplay" class="text-2xl font-bold" style="color: #E85987;">--</div>
+        </div>
+
+        <div id="collaborativeTurnIndicator" class="hidden mb-3 p-3 rounded-lg text-center font-semibold" style="background-color: #fefcea;">
+          <span id="turnIndicatorText"></span>
         </div>
 
         <!-- Drawing Mode -->
@@ -243,6 +266,19 @@
     window.currentPlayerName = null;
     window.roomAdminId = null;
 
+    // Load banner on page load
+    onValue(ref(db, 'globalSettings/bannerUrl'), (snap) => {
+      const bannerUrl = snap.val();
+      if (bannerUrl) {
+        document.getElementById('bannerImage').src = bannerUrl;
+        document.getElementById('bannerImage').style.display = 'block';
+        document.getElementById('bannerPlaceholder').style.display = 'none';
+      } else {
+        document.getElementById('bannerImage').style.display = 'none';
+        document.getElementById('bannerPlaceholder').style.display = 'block';
+      }
+    });
+
     // Canvas setup
     let canvas, ctx;
     let drawing = false;
@@ -290,14 +326,21 @@
     }
 
     function startDrawing(e) {
-      drawing = true;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
+      onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
+        const data = snap.val();
+        if (data && data.collaborativeDrawing && !isMyTurn(data)) {
+          return; // Not your turn
+        }
+        
+        drawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      }, { onlyOnce: true });
     }
 
     function draw(e) {
@@ -315,6 +358,15 @@
     }
 
     function stopDrawing() {
+      if (drawing) {
+        // If collaborative drawing is enabled and we just finished drawing, advance turn
+        onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
+          const data = snap.val();
+          if (data && data.collaborativeDrawing && isMyTurn(data)) {
+            advanceTurn(data);
+          }
+        }, { onlyOnce: true });
+      }
       drawing = false;
     }
 
@@ -391,6 +443,45 @@
       const checked = document.getElementById('forceTextMode').checked;
       await update(ref(db, `rooms/${window.roomCode}`), { forceTextMode: checked });
     };
+
+    window.updateBanner = async function() {
+      if (window.currentPlayerId !== window.roomAdminId) return;
+      const bannerUrl = document.getElementById('bannerUrlInput').value.trim();
+      await update(ref(db, 'globalSettings'), { bannerUrl: bannerUrl });
+      alert('Banner updated! Refresh the lobby page to see changes.');
+    };
+
+    window.toggleCollaborativeDrawing = async function() {
+      if (window.currentPlayerId !== window.roomAdminId) return;
+      const checked = document.getElementById('collaborativeDrawing').checked;
+      await update(ref(db, `rooms/${window.roomCode}`), { 
+        collaborativeDrawing: checked,
+        currentDrawingTurn: checked ? 0 : null
+      });
+    };
+
+    // Player colors for collaborative drawing
+    const playerColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B500', '#52B788', '#E63946', '#457B9D'];
+
+    function getPlayerColor(playerIndex) {
+      return playerColors[playerIndex % playerColors.length];
+    }
+
+    function isMyTurn(data) {
+      if (!data.collaborativeDrawing) return true;
+      if (!data.players) return false;
+      
+      const currentTurnIndex = data.currentDrawingTurn || 0;
+      const currentTurnPlayer = data.players[currentTurnIndex];
+      return currentTurnPlayer && currentTurnPlayer.id === window.currentPlayerId;
+    }
+
+    function advanceTurn(data) {
+      if (!data.collaborativeDrawing || !data.players) return;
+      
+      const nextTurn = ((data.currentDrawingTurn || 0) + 1) % data.players.length;
+      update(ref(db, `rooms/${window.roomCode}`), { currentDrawingTurn: nextTurn });
+    }
 
     window.startTimer = function() {
       if (timerInterval) clearInterval(timerInterval);
@@ -604,6 +695,8 @@
         forceAnonymous: false,
         autoStartTimer: true,
         forceTextMode: false,
+        collaborativeDrawing: false,
+        currentDrawingTurn: null,
         defaultTimer: 60,
         bets: {},
         bettingMode: false,
@@ -673,6 +766,14 @@
         document.getElementById('forceAnonymous').checked = data.forceAnonymous || false;
         document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false;
         document.getElementById('forceTextMode').checked = data.forceTextMode || false;
+        document.getElementById('collaborativeDrawing').checked = data.collaborativeDrawing || false;
+        
+        // Load current banner URL
+        onValue(ref(db, 'globalSettings/bannerUrl'), (snap) => {
+          const bannerUrl = snap.val();
+          document.getElementById('bannerUrlInput').value = bannerUrl || '';
+        }, { onlyOnce: true });
+        
         const defaultTimer = data.defaultTimer || 60;
         [30, 60, 90, 120].forEach(s => {
           const btn = document.getElementById(`default_timer${s}`);
@@ -710,7 +811,10 @@
           const div = document.createElement('div');
           const isCurrentPlayer = p.id === window.currentPlayerId;
           const score = p.score || 0;
-          div.className = `flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded ${isCurrentPlayer ? 'bg-blue-50 border-2 border-blue-300' : 'bg-gray-50'}`;
+          div.className = `flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 rounded ${isCurrentPlayer ? '' : 'bg-gray-50'}`;
+          if (isCurrentPlayer) {
+            div.style.backgroundColor = '#fefcea';
+          }
           div.innerHTML = `
             <span class="flex-1 font-medium text-sm">${p.name}${isCurrentPlayer ? ' (You)' : ''} <span class="ml-2 px-2 py-1 rounded text-xs" style="background-color: #E8F4D0;">Score: ${score}</span></span>
             <div class="flex gap-1">
@@ -985,7 +1089,8 @@
           bettingMode: false,
           showResults: false,
           excludedPlayer: null,
-          readingStarted: false
+          readingStarted: false,
+          currentDrawingTurn: 0
         });
         
         window.pendingScoreChanges = {};
@@ -999,6 +1104,38 @@
       }
       
       document.getElementById('answerSection').classList.remove('hidden');
+      
+      // Update collaborative drawing turn indicator
+      if (data.collaborativeDrawing && answerMode === 'draw') {
+        document.getElementById('collaborativeTurnIndicator').classList.remove('hidden');
+        const currentTurnIndex = data.currentDrawingTurn || 0;
+        const currentTurnPlayer = data.players[currentTurnIndex];
+        const myTurn = isMyTurn(data);
+        
+        if (myTurn) {
+          document.getElementById('turnIndicatorText').textContent = "🎨 It's YOUR turn to draw!";
+          document.getElementById('turnIndicatorText').style.color = '#E85987';
+          // Set player's color
+          const playerIndex = data.players.findIndex(p => p.id === window.currentPlayerId);
+          if (playerIndex >= 0) {
+            currentColor = getPlayerColor(playerIndex);
+            document.getElementById('colorPicker').value = currentColor;
+            document.getElementById('colorPicker').disabled = true;
+          }
+        } else {
+          document.getElementById('turnIndicatorText').textContent = `⏳ Waiting for ${currentTurnPlayer?.name || 'player'}'s turn...`;
+          document.getElementById('turnIndicatorText').style.color = '#6B7280';
+        }
+        
+        // Disable/enable canvas based on turn
+        canvas.style.cursor = myTurn ? 'crosshair' : 'not-allowed';
+        canvas.style.opacity = myTurn ? '1' : '0.6';
+      } else {
+        document.getElementById('collaborativeTurnIndicator').classList.add('hidden');
+        document.getElementById('colorPicker').disabled = false;
+        canvas.style.cursor = 'crosshair';
+        canvas.style.opacity = '1';
+      }
       
       const submissions = data.submissions || {};
       const submittedCount = Object.keys(submissions).length;
@@ -1154,7 +1291,8 @@
           submissions: {},
           bettingMode: false,
           bets: {},
-          showResults: false
+          showResults: false,
+          currentDrawingTurn: 0
         };
         
         if ((data.gameMode === 'random_player' || data.gameMode === 'only_1_player') && data.players && data.players.length > 0) {
