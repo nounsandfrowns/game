@@ -25,7 +25,20 @@
 <body style="background-color: #D4E4DD;" class="min-h-screen p-4 md:p-8">
   <div class="max-w-6xl mx-auto" id="app">
     <h1 class="text-3xl md:text-4xl font-bold text-center mb-2" style="color: #4E5987;">Word Randomizer</h1>
-    <p class="text-center text-gray-600 mb-8">For games with friends for fun</p>
+    <p class="text-center text-gray-600 mb-4">For games with friends for fun</p>
+
+    <!-- How it works collapsible -->
+    <div class="max-w-2xl mx-auto mb-8">
+      <button onclick="toggleHowItWorks()" class="w-full px-4 py-3 rounded-lg flex items-center justify-between" style="background-color: #F5E6D3;">
+        <span class="font-semibold" style="color: #4E5987;">📖 How it works</span>
+        <span id="howItWorksIcon" class="text-xl" style="color: #4E5987;">▼</span>
+      </button>
+      <div id="howItWorksContent" class="hidden mt-2 px-4 py-4 rounded-lg" style="background-color: #fefcea;">
+        <p class="text-gray-700 leading-relaxed">
+          Create a room and then share the room's number and password with your friends, who all join on their phones. Then it's up to you how you want to apply rules and teams to the game you want to play that would normally require a dictionary or words on cards (and not even pen and paper). I've tried to allow for variables for the games that I know of and will add more later.
+        </p>
+      </div>
+    </div>
 
     <!-- Lobby -->
     <div id="lobby">
@@ -271,6 +284,20 @@
         document.getElementById('bannerPlaceholder').style.display = 'block';
       }
     });
+
+    // Toggle How it works section
+    window.toggleHowItWorks = function() {
+      const content = document.getElementById('howItWorksContent');
+      const icon = document.getElementById('howItWorksIcon');
+      
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.textContent = '▲';
+      } else {
+        content.classList.add('hidden');
+        icon.textContent = '▼';
+      }
+    };
 
     // Canvas setup
     let canvas, ctx;
