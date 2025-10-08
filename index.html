@@ -109,6 +109,10 @@
               <input type="checkbox" id="collaborativeDrawing" onclick="toggleCollaborativeDrawing()" class="w-4 h-4">
               <span class="text-sm">Collaborative drawing (alternating turns)</span>
             </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="collaborativeStory" onclick="toggleCollaborativeStory()" class="w-4 h-4">
+              <span class="text-sm">Collaborative story (3 words per turn)</span>
+            </label>
             <div class="flex flex-wrap gap-2 items-center">
               <span class="text-sm font-medium">Default timer:</span>
               <button onclick="setDefaultTimer(30)" id="default_timer30" class="px-2 py-1 rounded text-xs bg-gray-200">30s</button>
@@ -163,6 +167,22 @@
 
         <div id="collaborativeTurnIndicator" class="hidden mb-3 p-3 rounded-lg text-center font-semibold" style="background-color: #fefcea;">
           <span id="turnIndicatorText"></span>
+        </div>
+
+        <!-- Collaborative Story Display -->
+        <div id="collaborativeStoryDisplay" class="hidden mb-3 p-4 rounded-lg" style="background-color: #E8F4D0;">
+          <h4 class="font-semibold mb-2">Story So Far:</h4>
+          <p id="storyText" class="text-lg leading-relaxed"></p>
+        </div>
+
+        <!-- Collaborative Story Input -->
+        <div id="collaborativeStoryInput" class="hidden mb-3">
+          <div class="flex gap-2">
+            <input type="text" id="storyWord1" placeholder="Word 1" maxlength="20" class="flex-1 px-3 py-2 border-2 rounded-lg" style="border-color: #4E5987;">
+            <input type="text" id="storyWord2" placeholder="Word 2" maxlength="20" class="flex-1 px-3 py-2 border-2 rounded-lg" style="border-color: #4E5987;">
+            <input type="text" id="storyWord3" placeholder="Word 3" maxlength="20" class="flex-1 px-3 py-2 border-2 rounded-lg" style="border-color: #4E5987;">
+          </div>
+          <button onclick="submitStoryWords()" id="submitStoryBtn" class="w-full mt-2 px-4 py-2 text-white rounded-lg font-semibold" style="background-color: #E85987;">Add My 3 Words</button>
         </div>
 
         <!-- Drawing Mode -->
@@ -283,6 +303,9 @@
                   </div>
                   <div class="p-3 rounded" style="background-color: #fefcea;">
                     <strong>Collaborative drawing:</strong> Players take turns drawing one stroke at a time on a shared canvas, each with their own color. Only when a player submits is the collaborative drawing complete.
+                  </div>
+                  <div class="p-3 rounded" style="background-color: #fefcea;">
+                    <strong>Collaborative story:</strong> Players take turns adding exactly 3 words to build a story together. Each player contributes in sequence until everyone has added their words, then the complete story is submitted as the answer.
                   </div>
                   <div class="p-3 rounded" style="background-color: #fefcea;">
                     <strong>Default timer:</strong> Sets the countdown timer duration (30s, 60s, 90s, or 120s) for answering.
@@ -481,9 +504,14 @@
 
     function stopDrawing() {
       if (drawing) {
-        onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
+        onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
           const data = snap.val();
           if (data && data.collaborativeDrawing && isMyTurn(data)) {
+            // Save canvas to Firebase before advancing turn
+            const canvasData = canvas.toDataURL();
+            await update(ref(db, `rooms/${window.roomCode}`), { 
+              canvasData: canvasData 
+            });
             advanceTurn(data);
           }
         }, { onlyOnce: true });
@@ -500,6 +528,48 @@
       });
       canvas.dispatchEvent(mouseEvent);
     }
+
+    function loadCanvasFromData(dataUrl) {
+      const img = new Image();
+      img.onload = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      };
+      img.src = dataUrl;
+    }
+
+    window.submitStoryWords = async function() {
+      const word1 = document.getElementById('storyWord1').value.trim();
+      const word2 = document.getElementById('storyWord2').value.trim();
+      const word3 = document.getElementById('storyWord3').value.trim();
+      
+      if (!word1 || !word2 || !word3) {
+        return alert('Please enter all 3 words');
+      }
+      
+      onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
+        const data = snap.val();
+        if (!data.collaborativeStory) return;
+        
+        const storyWords = data.storyWords || [];
+        storyWords.push({ 
+          playerId: window.currentPlayerId, 
+          playerName: window.currentPlayerName,
+          words: [word1, word2, word3] 
+        });
+        
+        const nextTurn = ((data.currentStoryTurn || 0) + 1) % data.players.length;
+        
+        await update(ref(db, `rooms/${window.roomCode}`), { 
+          storyWords: storyWords,
+          currentStoryTurn: nextTurn
+        });
+        
+        document.getElementById('storyWord1').value = '';
+        document.getElementById('storyWord2').value = '';
+        document.getElementById('storyWord3').value = '';
+      }, { onlyOnce: true });
+    };
 
     window.setTool = function(tool) {
       currentTool = tool;
@@ -567,9 +637,28 @@
     window.toggleCollaborativeDrawing = async function() {
       if (window.currentPlayerId !== window.roomAdminId) return;
       const checked = document.getElementById('collaborativeDrawing').checked;
+      if (checked) {
+        document.getElementById('collaborativeStory').checked = false;
+      }
       await update(ref(db, `rooms/${window.roomCode}`), { 
         collaborativeDrawing: checked,
-        currentDrawingTurn: checked ? 0 : null
+        collaborativeStory: false,
+        currentDrawingTurn: checked ? 0 : null,
+        canvasData: checked ? null : undefined
+      });
+    };
+
+    window.toggleCollaborativeStory = async function() {
+      if (window.currentPlayerId !== window.roomAdminId) return;
+      const checked = document.getElementById('collaborativeStory').checked;
+      if (checked) {
+        document.getElementById('collaborativeDrawing').checked = false;
+      }
+      await update(ref(db, `rooms/${window.roomCode}`), { 
+        collaborativeStory: checked,
+        collaborativeDrawing: false,
+        currentStoryTurn: checked ? 0 : null,
+        storyWords: checked ? [] : undefined
       });
     };
 
@@ -746,17 +835,23 @@
       let answerData;
       let answerType;
       
-      if (answerMode === 'draw') {
-        answerData = canvas.toDataURL();
-        answerType = 'drawing';
-      } else {
-        answerData = document.getElementById('textAnswer').value.trim();
-        if (!answerData) return alert('Please enter your answer');
-        answerType = 'text';
-      }
-      
       onValue(ref(db, `rooms/${window.roomCode}`), async (snap) => {
         const data = snap.val();
+        
+        if (data.collaborativeStory) {
+          // For collaborative story, compile all the words
+          const storyWords = data.storyWords || [];
+          answerData = storyWords.map(entry => entry.words.join(' ')).join(' ');
+          answerType = 'text';
+        } else if (answerMode === 'draw') {
+          answerData = canvas.toDataURL();
+          answerType = 'drawing';
+        } else {
+          answerData = document.getElementById('textAnswer').value.trim();
+          if (!answerData) return alert('Please enter your answer');
+          answerType = 'text';
+        }
+        
         const isAnonymous = data.forceAnonymous || false;
         const submissions = data.submissions || {};
         submissions[window.currentPlayerId] = {
@@ -805,7 +900,11 @@
         autoStartTimer: true,
         forceTextMode: false,
         collaborativeDrawing: false,
+        collaborativeStory: false,
         currentDrawingTurn: null,
+        currentStoryTurn: null,
+        canvasData: null,
+        storyWords: [],
         defaultTimer: 60,
         bets: {},
         bettingMode: false,
@@ -885,6 +984,7 @@
         document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false;
         document.getElementById('forceTextMode').checked = data.forceTextMode || false;
         document.getElementById('collaborativeDrawing').checked = data.collaborativeDrawing || false;
+        document.getElementById('collaborativeStory').checked = data.collaborativeStory || false;
         
         const defaultTimer = data.defaultTimer || 60;
         [30, 60, 90, 120].forEach(s => {
@@ -1173,7 +1273,10 @@
           showResults: false,
           excludedPlayer: null,
           readingStarted: false,
-          currentDrawingTurn: 0
+          currentDrawingTurn: 0,
+          currentStoryTurn: 0,
+          canvasData: null,
+          storyWords: []
         });
         
         window.pendingScoreChanges = {};
@@ -1188,33 +1291,85 @@
       
       document.getElementById('answerSection').classList.remove('hidden');
       
-      if (data.collaborativeDrawing && answerMode === 'draw') {
+      // Handle collaborative story mode
+      if (data.collaborativeStory) {
+        document.getElementById('collaborativeStoryDisplay').classList.remove('hidden');
         document.getElementById('collaborativeTurnIndicator').classList.remove('hidden');
-        const currentTurnIndex = data.currentDrawingTurn || 0;
+        
+        const storyWords = data.storyWords || [];
+        let storyText = '';
+        storyWords.forEach(entry => {
+          storyText += entry.words.join(' ') + ' ';
+        });
+        document.getElementById('storyText').textContent = storyText || 'No words yet. Be the first to contribute!';
+        
+        const currentTurnIndex = data.currentStoryTurn || 0;
         const currentTurnPlayer = data.players[currentTurnIndex];
-        const myTurn = isMyTurn(data);
+        const myTurn = currentTurnPlayer && currentTurnPlayer.id === window.currentPlayerId;
         
         if (myTurn) {
-          document.getElementById('turnIndicatorText').textContent = "🎨 It's YOUR turn to draw!";
+          document.getElementById('turnIndicatorText').textContent = "✍️ It's YOUR turn to add 3 words!";
           document.getElementById('turnIndicatorText').style.color = '#E85987';
-          const playerIndex = data.players.findIndex(p => p.id === window.currentPlayerId);
-          if (playerIndex >= 0) {
-            currentColor = getPlayerColor(playerIndex);
-            document.getElementById('colorPicker').value = currentColor;
-            document.getElementById('colorPicker').disabled = true;
-          }
+          document.getElementById('collaborativeStoryInput').classList.remove('hidden');
+          document.getElementById('drawMode').classList.add('hidden');
+          document.getElementById('textMode').classList.add('hidden');
+          document.getElementById('submitBtn').classList.add('hidden');
         } else {
           document.getElementById('turnIndicatorText').textContent = `⏳ Waiting for ${currentTurnPlayer?.name || 'player'}'s turn...`;
           document.getElementById('turnIndicatorText').style.color = '#6B7280';
+          document.getElementById('collaborativeStoryInput').classList.add('hidden');
+          document.getElementById('drawMode').classList.add('hidden');
+          document.getElementById('textMode').classList.add('hidden');
+          document.getElementById('submitBtn').classList.add('hidden');
         }
         
-        canvas.style.cursor = myTurn ? 'crosshair' : 'not-allowed';
-        canvas.style.opacity = myTurn ? '1' : '0.6';
+        // Check if all players have contributed
+        if (storyWords.length >= data.players.length) {
+          document.getElementById('submitBtn').classList.remove('hidden');
+          document.getElementById('collaborativeStoryInput').classList.add('hidden');
+          document.getElementById('turnIndicatorText').textContent = '✅ Story complete! Submit when ready.';
+          document.getElementById('turnIndicatorText').style.color = '#10B981';
+        }
       } else {
-        document.getElementById('collaborativeTurnIndicator').classList.add('hidden');
-        document.getElementById('colorPicker').disabled = false;
-        canvas.style.cursor = 'crosshair';
-        canvas.style.opacity = '1';
+        document.getElementById('collaborativeStoryDisplay').classList.add('hidden');
+        document.getElementById('collaborativeStoryInput').classList.add('hidden');
+        document.getElementById('submitBtn').classList.remove('hidden');
+        
+        // Handle collaborative drawing mode
+        if (data.collaborativeDrawing && answerMode === 'draw') {
+          document.getElementById('collaborativeTurnIndicator').classList.remove('hidden');
+          
+          // Load canvas data if it exists
+          if (data.canvasData) {
+            loadCanvasFromData(data.canvasData);
+          }
+          
+          const currentTurnIndex = data.currentDrawingTurn || 0;
+          const currentTurnPlayer = data.players[currentTurnIndex];
+          const myTurn = isMyTurn(data);
+          
+          if (myTurn) {
+            document.getElementById('turnIndicatorText').textContent = "🎨 It's YOUR turn to draw!";
+            document.getElementById('turnIndicatorText').style.color = '#E85987';
+            const playerIndex = data.players.findIndex(p => p.id === window.currentPlayerId);
+            if (playerIndex >= 0) {
+              currentColor = getPlayerColor(playerIndex);
+              document.getElementById('colorPicker').value = currentColor;
+              document.getElementById('colorPicker').disabled = true;
+            }
+          } else {
+            document.getElementById('turnIndicatorText').textContent = `⏳ Waiting for ${currentTurnPlayer?.name || 'player'}'s turn...`;
+            document.getElementById('turnIndicatorText').style.color = '#6B7280';
+          }
+          
+          canvas.style.cursor = myTurn ? 'crosshair' : 'not-allowed';
+          canvas.style.opacity = myTurn ? '1' : '0.6';
+        } else {
+          document.getElementById('collaborativeTurnIndicator').classList.add('hidden');
+          document.getElementById('colorPicker').disabled = false;
+          canvas.style.cursor = 'crosshair';
+          canvas.style.opacity = '1';
+        }
       }
       
       const submissions = data.submissions || {};
@@ -1369,7 +1524,10 @@
           bettingMode: false,
           bets: {},
           showResults: false,
-          currentDrawingTurn: 0
+          currentDrawingTurn: 0,
+          currentStoryTurn: 0,
+          canvasData: null,
+          storyWords: []
         };
         
         if ((data.gameMode === 'random_player' || data.gameMode === 'only_1_player') && data.players && data.players.length > 0) {
