@@ -242,8 +242,8 @@
       </div>
 
       <!-- Help Modal -->
-      <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" style="background-color: #F5E6D3;">
+      <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeHelpIfClickOutside(event)">
+        <div class="rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" style="background-color: #F5E6D3;" onclick="event.stopPropagation()">
           <div class="p-6">
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-2xl font-bold" style="color: #4E5987;">Help & Information</h2>
@@ -282,10 +282,25 @@
                     <strong>Force text mode:</strong> Disables drawing mode for all players, forcing them to submit text answers only.
                   </div>
                   <div class="p-3 rounded" style="background-color: #fefcea;">
-                    <strong>Collaborative drawing:</strong> Players take turns drawing one stroke at a time on a shared canvas, each with their own color.
+                    <strong>Collaborative drawing:</strong> Players take turns drawing one stroke at a time on a shared canvas, each with their own color. Only when a player submits is the collaborative drawing complete.
                   </div>
                   <div class="p-3 rounded" style="background-color: #fefcea;">
                     <strong>Default timer:</strong> Sets the countdown timer duration (30s, 60s, 90s, or 120s) for answering.
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="font-semibold text-lg mb-3" style="color: #4E5987;">How to Play:</h3>
+                <div class="space-y-2 text-sm">
+                  <div class="p-3 rounded" style="background-color: #fefcea;">
+                    <strong>Submitting Answers:</strong> After a word is generated, players see their word (depending on game mode) and submit an answer by drawing or typing. Once all players submit, the admin can start the betting phase.
+                  </div>
+                  <div class="p-3 rounded" style="background-color: #fefcea;">
+                    <strong>Placing Bets:</strong> When the admin clicks "Place Bets", all players navigate through the submitted answers and vote on which answer best matches the word. In some game modes, players try to guess which answer belongs to the player who saw the word.
+                  </div>
+                  <div class="p-3 rounded" style="background-color: #fefcea;">
+                    <strong>Scoring Points:</strong> After betting, the admin shows results. Players earn points automatically based on correct guesses. In "Random Excluded" and "Only 1 Sees" modes, players who correctly identify the word-holder's answer get +1 point, and the word-holder gets +1 point for each correct guess. Admins can also manually adjust scores using the +/- buttons in the player list.
                   </div>
                 </div>
               </div>
@@ -295,24 +310,24 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Landing Page Help Modal -->
-      <div id="landingHelpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div class="rounded-lg shadow-xl max-w-lg w-full" style="background-color: #F5E6D3;">
-          <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-2xl font-bold" style="color: #4E5987;">How It Works</h2>
-              <button onclick="toggleLandingHelp()" class="text-3xl text-gray-500 hover:text-gray-700">&times;</button>
-            </div>
-            
-            <div class="p-4 rounded-lg mb-4" style="background-color: #fefcea;">
-              <p class="text-gray-700 leading-relaxed">
-                Create a room, share the code with friends, and play word games with settings to your choosing. No paper needed.
-              </p>
-            </div>
-
-            <button onclick="toggleLandingHelp()" class="w-full px-6 py-3 text-white rounded-lg font-semibold" style="background-color: #1EA7D8;">Got it!</button>
+    <!-- Landing Page Help Modal -->
+    <div id="landingHelpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onclick="closeLandingHelpIfClickOutside(event)">
+      <div class="rounded-lg shadow-xl max-w-lg w-full" style="background-color: #F5E6D3;" onclick="event.stopPropagation()">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold" style="color: #4E5987;">How It Works</h2>
+            <button onclick="toggleLandingHelp()" class="text-3xl text-gray-500 hover:text-gray-700">&times;</button>
           </div>
+          
+          <div class="p-4 rounded-lg mb-4" style="background-color: #fefcea;">
+            <p class="text-gray-700 leading-relaxed">
+              Create a room, share the code with friends, and play word games with settings to your choosing. No paper needed.
+            </p>
+          </div>
+
+          <button onclick="toggleLandingHelp()" class="w-full px-6 py-3 text-white rounded-lg font-semibold" style="background-color: #1EA7D8;">Got it!</button>
         </div>
       </div>
     </div>
@@ -370,6 +385,19 @@
         modal.classList.remove('hidden');
       } else {
         modal.classList.add('hidden');
+      }
+    };
+
+    // Close modals when clicking outside
+    window.closeHelpIfClickOutside = function(event) {
+      if (event.target.id === 'helpModal') {
+        toggleHelp();
+      }
+    };
+
+    window.closeLandingHelpIfClickOutside = function(event) {
+      if (event.target.id === 'landingHelpModal') {
+        toggleLandingHelp();
       }
     };
 
@@ -787,6 +815,7 @@
       
       window.roomCode = code;
       document.getElementById('lobby').classList.add('hidden');
+      document.getElementById('landingHelpModal').classList.add('hidden');
       document.getElementById('gameRoom').classList.remove('hidden');
       document.getElementById('roomCodeDisplay').textContent = code;
       document.getElementById('currentPlayerName').textContent = name;
@@ -826,6 +855,7 @@
         
         window.roomCode = code;
         document.getElementById('lobby').classList.add('hidden');
+        document.getElementById('landingHelpModal').classList.add('hidden');
         document.getElementById('gameRoom').classList.remove('hidden');
         document.getElementById('roomCodeDisplay').textContent = code;
         document.getElementById('currentPlayerName').textContent = name;
@@ -1383,6 +1413,8 @@
       window.currentPlayerId = null;
       window.currentPlayerName = null;
       document.getElementById('gameRoom').classList.add('hidden');
+      document.getElementById('helpModal').classList.add('hidden');
+      document.getElementById('landingHelpModal').classList.add('hidden');
       document.getElementById('lobby').classList.remove('hidden');
     };
   </script>
