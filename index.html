@@ -24,21 +24,11 @@
 </head>
 <body style="background-color: #D4E4DD;" class="min-h-screen p-4 md:p-8">
   <div class="max-w-6xl mx-auto" id="app">
-    <h1 class="text-3xl md:text-4xl font-bold text-center mb-2" style="color: #4E5987;">Word Randomizer</h1>
-    <p class="text-center text-gray-600 mb-4">For games with friends for fun</p>
-
-    <!-- How it works collapsible -->
-    <div class="max-w-2xl mx-auto mb-8">
-      <button onclick="toggleHowItWorks()" class="w-full px-4 py-3 rounded-lg flex items-center justify-between" style="background-color: #F5E6D3;">
-        <span class="font-semibold" style="color: #4E5987;">📖 How it works</span>
-        <span id="howItWorksIcon" class="text-xl" style="color: #4E5987;">▼</span>
-      </button>
-      <div id="howItWorksContent" class="hidden mt-2 px-4 py-4 rounded-lg" style="background-color: #fefcea;">
-        <p class="text-gray-700 leading-relaxed">
-          Create a room and then share the room's number and password with your friends, who all join on their phones. Then it's up to you how you want to apply rules and teams to the game you want to play that would normally require a dictionary or words on cards (and not even pen and paper). I've tried to allow for variables for the games that I know of and will add more later.
-        </p>
-      </div>
+    <div class="flex justify-end mb-2">
+      <button onclick="toggleLandingHelp()" class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold hover:opacity-80" style="background-color: #4E5987;" title="Help">?</button>
     </div>
+    <h1 class="text-3xl md:text-4xl font-bold text-center mb-2" style="color: #4E5987;">Word Randomizer</h1>
+    <p class="text-center text-gray-600 text-sm mb-8">For games with friends for fun</p>
 
     <!-- Lobby -->
     <div id="lobby">
@@ -433,7 +423,7 @@
       onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
         const data = snap.val();
         if (data && data.collaborativeDrawing && !isMyTurn(data)) {
-          return; // Not your turn
+          return;
         }
         
         drawing = true;
@@ -463,7 +453,6 @@
 
     function stopDrawing() {
       if (drawing) {
-        // If collaborative drawing is enabled and we just finished drawing, advance turn
         onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
           const data = snap.val();
           if (data && data.collaborativeDrawing && isMyTurn(data)) {
@@ -497,7 +486,6 @@
     };
 
     window.setAnswerMode = function(mode) {
-      // Check if forced text mode is enabled
       onValue(ref(db, `rooms/${window.roomCode}`), (snap) => {
         const data = snap.val();
         if (data && data.forceTextMode && mode === 'draw') {
@@ -557,7 +545,6 @@
       });
     };
 
-    // Player colors for collaborative drawing
     const playerColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B500', '#52B788', '#E63946', '#457B9D'];
 
     function getPlayerColor(playerIndex) {
@@ -638,7 +625,6 @@
           readingStarted: false
         });
         
-        // Stop any running timer
         stopTimer();
       }, { onlyOnce: true });
     };
@@ -719,11 +705,9 @@
       }, { onlyOnce: true });
     };
 
-    // Auto-start timer when word is generated
     window.autoStartTimer = function(defaultTime, autoStart) {
       selectedTimer = defaultTime || 60;
       if (autoStart) {
-        // Wait 10 seconds before starting
         setTimeout(() => {
           window.startTimer();
         }, 10000);
@@ -863,12 +847,10 @@
     function updateUI(data) {
       document.getElementById('playerCount').textContent = data.players ? data.players.length : 0;
       
-      // Show/hide admin settings
       const isAdmin = window.currentPlayerId === data.adminId;
       const adminPanel = document.getElementById('adminSettings');
       if (isAdmin) {
         adminPanel.classList.remove('hidden');
-        // Update admin settings
         document.getElementById('forceAnonymous').checked = data.forceAnonymous || false;
         document.getElementById('autoStartTimer').checked = data.autoStartTimer !== false;
         document.getElementById('forceTextMode').checked = data.forceTextMode || false;
@@ -886,16 +868,13 @@
         adminPanel.classList.add('hidden');
       }
       
-      // Set timer based on default
       if (data.defaultTimer) {
         selectedTimer = data.defaultTimer;
       }
       
-      // Update answer mode controls visibility
       if (data.forceTextMode) {
         document.getElementById('mode_draw').style.opacity = '0.5';
         document.getElementById('mode_draw').style.cursor = 'not-allowed';
-        // Force text mode
         if (answerMode === 'draw') {
           setAnswerMode('text');
         }
@@ -930,14 +909,12 @@
         });
       }
       
-      // Show/hide admin score controls
       if (isAdmin) {
         document.getElementById('adminScoreControls').classList.remove('hidden');
       } else {
         document.getElementById('adminScoreControls').classList.add('hidden');
       }
       
-      // Update game mode buttons - disable for non-admin
       ['all_see', 'team_alternate', 'random_player', 'only_1_player'].forEach(mode => {
         const btn = document.getElementById(`mode_${mode}`);
         if (data.gameMode === mode) {
@@ -948,7 +925,6 @@
           btn.style.color = '#000';
         }
         
-        // Disable for non-admin
         if (!isAdmin) {
           btn.style.opacity = '0.5';
           btn.style.cursor = 'not-allowed';
@@ -959,7 +935,6 @@
         }
       });
       
-      // Update category checkboxes - disable for non-admin
       if (data.wordCategories) {
         ['nouns', 'adjectives', 'fancyWords', 'famousPeople'].forEach(cat => {
           const checkbox = document.getElementById(`cat_${cat === 'fancyWords' ? 'fancy' : cat === 'famousPeople' ? 'famous' : cat}`);
@@ -987,7 +962,6 @@
       const resultsSection = document.getElementById('resultsSection');
       
       if (data.showResults) {
-        // Show results instead of betting
         bettingSection.classList.add('hidden');
         showRoundResults(data);
         return;
@@ -997,12 +971,10 @@
         bettingSection.classList.remove('hidden');
         resultsSection.classList.add('hidden');
         
-        // Show/hide reading controls based on readingStarted
         if (data.readingStarted) {
           document.getElementById('readAnswersBtn').classList.add('hidden');
           document.getElementById('navigationControls').classList.remove('hidden');
           
-          // Prepare answers for betting
           bettingAnswers = Object.values(data.submissions).sort(() => Math.random() - 0.5);
           document.getElementById('totalAnswers').textContent = bettingAnswers.length;
           
@@ -1015,7 +987,6 @@
           document.getElementById('navigationControls').classList.add('hidden');
         }
         
-        // Check if current player has already bet
         if (data.bets && data.bets[window.currentPlayerId]) {
           document.getElementById('betStatus').classList.remove('hidden');
           document.getElementById('selectAnswerBtn').disabled = true;
@@ -1024,7 +995,6 @@
           document.getElementById('selectAnswerBtn').disabled = false;
         }
         
-        // Show admin controls
         const isAdmin = window.currentPlayerId === data.adminId;
         if (isAdmin) {
           document.getElementById('adminBettingControls').classList.remove('hidden');
@@ -1032,12 +1002,10 @@
           document.getElementById('adminBettingControls').classList.add('hidden');
         }
         
-        // Check if all players have bet - if so, show results button for admin
         const totalPlayers = data.players ? data.players.length : 0;
         const totalBets = data.bets ? Object.keys(data.bets).length : 0;
         
         if (totalBets === totalPlayers && window.currentPlayerId === data.adminId) {
-          // Auto-show results
           setTimeout(() => showResults(data), 1000);
         }
       } else {
@@ -1058,15 +1026,12 @@
       const resultsSection = document.getElementById('resultsSection');
       resultsSection.classList.remove('hidden');
       
-      // Show the word
       document.getElementById('revealedWord').textContent = data.currentWord || '';
       
-      // Build summary of submissions and bets
       const summaryDiv = document.getElementById('roundSummary');
       const submissions = data.submissions || {};
       const bets = data.bets || {};
       
-      // Calculate who bet on each submission
       const submissionBets = {};
       Object.values(bets).forEach(bet => {
         if (!submissionBets[bet.selectedAnswerId]) {
@@ -1076,14 +1041,12 @@
         if (bettor) submissionBets[bet.selectedAnswerId].push(bettor.name);
       });
       
-      // Display each submission with who bet on it
       let html = '';
       Object.values(submissions).forEach(sub => {
         const betters = submissionBets[sub.playerId] || [];
-        // In modes where one person has the word, their submission is the "correct" one
         const isCorrect = (data.gameMode === 'random_player' || data.gameMode === 'only_1_player') 
           ? sub.playerId === data.excludedPlayer 
-          : false; // In all_see mode, there's no single correct answer
+          : false;
         
         html += `
           <div class="p-3 rounded-lg border-2 ${isCorrect ? 'border-green-500 bg-green-50' : 'bg-white'}">
@@ -1104,10 +1067,8 @@
       });
       summaryDiv.innerHTML = html;
       
-      // Calculate and display score changes
       calculateScoreChanges(data);
       
-      // Show next round button for admin
       const isAdmin = window.currentPlayerId === data.adminId;
       if (isAdmin) {
         document.getElementById('adminResultsControls').classList.remove('hidden');
@@ -1118,11 +1079,9 @@
 
     function calculateScoreChanges(data) {
       const scoreChangesDiv = document.getElementById('scoreChangesList');
-      const submissions = data.submissions || {};
       const bets = data.bets || {};
       const players = data.players || [];
       
-      // Find who had the word (excluded player or in only_1_player mode)
       let wordHolder = null;
       if (data.gameMode === 'random_player' || data.gameMode === 'only_1_player') {
         wordHolder = players.find(p => p.id === data.excludedPlayer);
@@ -1131,20 +1090,17 @@
       const scoreChanges = {};
       players.forEach(p => scoreChanges[p.id] = 0);
       
-      // Points for correct guesses
       Object.values(bets).forEach(bet => {
         if (wordHolder && bet.selectedAnswerId === wordHolder.id) {
           scoreChanges[bet.playerId] = (scoreChanges[bet.playerId] || 0) + 1;
         }
       });
       
-      // Points for the word holder if people guessed their answer
       if (wordHolder) {
         const correctGuesses = Object.values(bets).filter(b => b.selectedAnswerId === wordHolder.id).length;
         scoreChanges[wordHolder.id] = (scoreChanges[wordHolder.id] || 0) + correctGuesses;
       }
       
-      // Display changes
       let html = '';
       players.forEach(p => {
         const change = scoreChanges[p.id] || 0;
@@ -1164,7 +1120,6 @@
       
       scoreChangesDiv.innerHTML = html;
       
-      // Store score changes to apply in next round
       window.pendingScoreChanges = scoreChanges;
     }
 
@@ -1173,13 +1128,11 @@
         const data = snap.val();
         const players = data.players || [];
         
-        // Apply score changes
         const updatedPlayers = players.map(p => ({
           ...p,
           score: (p.score || 0) + (window.pendingScoreChanges[p.id] || 0)
         }));
         
-        // Reset for next round
         await update(ref(db, `rooms/${window.roomCode}`), { 
           players: updatedPlayers,
           currentWord: '',
@@ -1205,7 +1158,6 @@
       
       document.getElementById('answerSection').classList.remove('hidden');
       
-      // Update collaborative drawing turn indicator
       if (data.collaborativeDrawing && answerMode === 'draw') {
         document.getElementById('collaborativeTurnIndicator').classList.remove('hidden');
         const currentTurnIndex = data.currentDrawingTurn || 0;
@@ -1215,7 +1167,6 @@
         if (myTurn) {
           document.getElementById('turnIndicatorText').textContent = "🎨 It's YOUR turn to draw!";
           document.getElementById('turnIndicatorText').style.color = '#E85987';
-          // Set player's color
           const playerIndex = data.players.findIndex(p => p.id === window.currentPlayerId);
           if (playerIndex >= 0) {
             currentColor = getPlayerColor(playerIndex);
@@ -1227,7 +1178,6 @@
           document.getElementById('turnIndicatorText').style.color = '#6B7280';
         }
         
-        // Disable/enable canvas based on turn
         canvas.style.cursor = myTurn ? 'crosshair' : 'not-allowed';
         canvas.style.opacity = myTurn ? '1' : '0.6';
       } else {
@@ -1252,7 +1202,6 @@
         document.getElementById('submitBtn').textContent = 'Submit Answer';
       }
       
-      // Show Place Bets button for admin when all players have submitted
       const isAdmin = window.currentPlayerId === data.adminId;
       if (isAdmin && submittedCount > 0 && submittedCount === totalPlayers && !data.bettingMode) {
         document.getElementById('placeBetsBtn').classList.remove('hidden');
@@ -1268,14 +1217,12 @@
         return;
       }
       
-      // Find current player
       const currentPlayer = data.players.find(p => p.id === window.currentPlayerId);
       if (!currentPlayer) {
         container.innerHTML = '';
         return;
       }
       
-      // Only show the current player's own card
       const canSee = canPlayerSeeWord(currentPlayer, data);
       const team = currentPlayer.team;
       const borderColor = team === 'A' ? '#5E5394' : team === 'B' ? '#E85987' : '#D1D5DB';
@@ -1405,9 +1352,8 @@
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('submitBtn').textContent = 'Submit Answer';
         
-        // Auto-start timer with default time if enabled
         const defaultTimer = data.defaultTimer || 60;
-        const autoStart = data.autoStartTimer !== false; // Default to true
+        const autoStart = data.autoStartTimer !== false;
         autoStartTimer(defaultTimer, autoStart);
       }, { onlyOnce: true });
     };
