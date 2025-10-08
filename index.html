@@ -1473,6 +1473,11 @@
         const data = snap.val();
         const players = data.players.filter(p => p.id !== id);
         await update(ref(db, `rooms/${window.roomCode}`), { players });
+        
+        // Refresh the page for all users if this is the current user
+        if (id === window.currentPlayerId) {
+          setTimeout(() => location.reload(), 500);
+        }
       }, { onlyOnce: true });
     };
 
